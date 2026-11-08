@@ -19,3 +19,8 @@ AWS-0057
 # e não muda o risco num bucket privado, com bloqueio de acesso público e só TLS.
 AVD-AWS-0132
 AWS-0132
+
+# Caddy 2: golang.org/x/net/html (DoS no parser de HTML), compilado dentro do binário do Caddy.
+# O Caddyfile do Sonar não usa templates nem processa HTML. Remover quando sair caddy:2-alpine
+# com golang.org/x/net >= 0.62.0.
+CVE-2026-78661
