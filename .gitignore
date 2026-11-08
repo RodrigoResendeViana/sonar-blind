@@ -8,8 +8,6 @@
 *.tfstate.*
 .terraform/
 firmware/include/secrets.h
-infra/monitoramento/segredos/*
-!infra/monitoramento/segredos/LEIA-ME.md
 infra/compose/.env
 
 # modelos de visão (grandes; ficam com a equipe de Visão)

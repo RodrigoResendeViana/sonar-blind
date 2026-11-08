@@ -1,4 +1,5 @@
-# Busca as métricas da API e da EC2 por HTTPS, com senha, e testa o site de fora.
+# Roda na EC2, dentro da rede do docker compose: busca as métricas direto nos containers
+# e testa o site de fora (pela internet) com o blackbox exporter.
 global:
   scrape_interval: 30s
   evaluation_interval: 30s
@@ -19,22 +20,12 @@ scrape_configs:
       - targets: ["localhost:9090"]
 
   - job_name: sonar-api
-    scheme: https
-    metrics_path: /metrics
-    basic_auth:
-      username: prometheus
-      password_file: /etc/prometheus/segredos/metricas_senha
     static_configs:
-      - targets: ["sonar.rodrigoviana.app.br"]
+      - targets: ["api:8000"]
 
   - job_name: sonar-ec2
-    scheme: https
-    metrics_path: /node-metrics
-    basic_auth:
-      username: prometheus
-      password_file: /etc/prometheus/segredos/metricas_senha
     static_configs:
-      - targets: ["sonar.rodrigoviana.app.br"]
+      - targets: ["node-exporter:9100"]
 
   - job_name: sonar-site
     metrics_path: /probe
