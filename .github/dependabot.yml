@@ -1,17 +1,24 @@
+# cooldown: espera 7 dias antes de propor uma versão nova (pacote recém-publicado pode ser malicioso)
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
   - package-ecosystem: pip
     directories: [/api, /edge]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
   - package-ecosystem: npm
     directory: /app
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       dependencias:
         patterns: ["*"]
@@ -19,11 +26,17 @@ updates:
     directories: [/api, /app]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
   - package-ecosystem: docker-compose
     directory: /infra/compose
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
   - package-ecosystem: terraform
     directories: [/infra/terraform/bootstrap, /infra/terraform/nuvem]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
