@@ -22,7 +22,7 @@ output "papel_deploy_arn" {
   value       = aws_iam_role.deploy.arn
 }
 
-output "senha_das_metricas" {
-  description = "Comando que mostra a senha do Prometheus (usuário prometheus)."
-  value       = "aws ssm get-parameter --name /sonar/metricas/senha --with-decryption --query Parameter.Value --output text"
+output "senha_do_grafana" {
+  description = "Comando que mostra a senha do Grafana (usuário admin, em https://<domínio>/grafana)."
+  value       = "aws ssm get-parameter --name /sonar/grafana/senha --with-decryption --query Parameter.Value --output text"
 }
