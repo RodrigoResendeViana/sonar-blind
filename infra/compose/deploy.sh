@@ -5,7 +5,7 @@
 # Uso: deploy.sh <tag-da-imagem>
 #
 # Lê os segredos do Parameter Store (/sonar/...), gera o .env, as senhas e a ACL do Mosquitto
-# e a senha das métricas, sobe o compose e copia o certificado do Caddy para o MQTT (porta 8883).
+# e o token do Telegram, sobe o compose e copia o certificado do Caddy para o MQTT (porta 8883).
 set -euo pipefail
 
 TAG="${1:?uso: deploy.sh <tag-da-imagem>}"
@@ -14,8 +14,8 @@ COMPOSE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SEGREDOS=/opt/sonar/segredos
 REGISTRO="${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}"
 IMAGEM_MOSQUITTO="eclipse-mosquitto:2"
-UID_CADDY=10001
 UID_MOSQUITTO=1883
+UID_NOBODY=65534
 
 log() { printf '[deploy %s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 falhar() { log "ERRO: $*"; exit 1; }
@@ -35,19 +35,21 @@ umask 077
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 install -d -m 755 /opt/sonar "$SEGREDOS"
-install -d -m 750 -o "$UID_CADDY" -g "$UID_CADDY" "$SEGREDOS/caddy"
 install -d -m 750 -o "$UID_MOSQUITTO" -g "$UID_MOSQUITTO" "$SEGREDOS/mosquitto" "$SEGREDOS/mosquitto/certs"
+install -d -m 750 -o "$UID_NOBODY" -g "$UID_NOBODY" "$SEGREDOS/alertmanager"
 
 log "lendo parâmetros do Parameter Store"
 DOMINIO="$(parametro /sonar/deploy/dominio)"
 DB_SENHA="$(parametro /sonar/db/senha)"
 TOKEN_SERVICO="$(parametro /sonar/api/token-servico)"
 SAL_HASH="$(parametro /sonar/api/sal-hash)"
-METRICAS_SENHA="$(parametro /sonar/metricas/senha)"
 OLHOVIVO_TOKEN="$(parametro_opcional /sonar/olhovivo/token)"
 IA_URL="$(parametro_opcional /sonar/ia/url)"
 PERFIS="$(parametro_opcional /sonar/compose/perfis)"
 GHCR_USUARIO="$(parametro_opcional /sonar/ghcr/usuario)"
+GRAFANA_SENHA="$(parametro /sonar/grafana/senha)"
+TELEGRAM_TOKEN="$(parametro_opcional /sonar/telegram/token)"
+TELEGRAM_CHAT_ID="$(parametro_opcional /sonar/telegram/chat-id)"
 GHCR_TOKEN="$(parametro_opcional /sonar/ghcr/token)"
 [ -n "$OLHOVIVO_TOKEN" ] || log "AVISO: /sonar/olhovivo/token não existe; a API sobe só com a demonstração"
 
@@ -87,10 +89,15 @@ docker run --rm --user 0 --network none -v "$TMP:/w" "$IMAGEM_MOSQUITTO" mosquit
 install -m 600 -o "$UID_MOSQUITTO" -g "$UID_MOSQUITTO" "$TMP/passwd" "$SEGREDOS/mosquitto/passwd"
 install -m 600 -o "$UID_MOSQUITTO" -g "$UID_MOSQUITTO" "$TMP/acl" "$SEGREDOS/mosquitto/acl"
 
-log "gerando a senha das métricas (bcrypt)"
-HASH="$(printf '%s' "$METRICAS_SENHA" | htpasswd -niBC 10 prometheus | cut -d: -f2-)"
-printf 'basic_auth {\n\tprometheus %s\n}\n' "$HASH" >"$TMP/metrics_auth.caddy"
-install -m 640 -o "$UID_CADDY" -g "$UID_CADDY" "$TMP/metrics_auth.caddy" "$SEGREDOS/caddy/metrics_auth.caddy"
+log "configurando o Telegram dos alertas"
+if [ -n "$TELEGRAM_TOKEN" ]; then
+  printf '%s' "$TELEGRAM_TOKEN" >"$TMP/telegram_token"
+  install -m 600 -o "$UID_NOBODY" -g "$UID_NOBODY" "$TMP/telegram_token" "$SEGREDOS/alertmanager/telegram_token"
+else
+  rm -f "$SEGREDOS/alertmanager/telegram_token"
+  log "AVISO: /sonar/telegram/token não existe; os alertas não vão para o Telegram"
+fi
+case "$TELEGRAM_CHAT_ID" in ''|-[0-9]*|[0-9]*) ;; *) falhar "/sonar/telegram/chat-id precisa ser um número" ;; esac
 
 escrever_env() {
   local conf_mqtt="$1"
@@ -109,6 +116,8 @@ SONAR_OLHOVIVO_TOKEN='$OLHOVIVO_TOKEN'
 SONAR_TOKEN_SERVICO='$TOKEN_SERVICO'
 SONAR_SAL_HASH='$SAL_HASH'
 SONAR_IA_URL='$IA_URL'
+SONAR_GRAFANA_PASSWORD='$GRAFANA_SENHA'
+SONAR_TELEGRAM_CHAT_ID='$TELEGRAM_CHAT_ID'
 COMPOSE_PROFILES='producao${PERFIS:+,$PERFIS}'
 EOF
   chmod 600 "$COMPOSE_DIR/.env"

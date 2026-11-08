@@ -1,0 +1,4 @@
+route:
+  receiver: nenhum
+receivers:
+  - name: nenhum

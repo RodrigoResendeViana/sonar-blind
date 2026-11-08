@@ -17,8 +17,8 @@ resource "random_password" "sal_hash" {
   special = false
 }
 
-resource "random_password" "metricas" {
-  length  = 32
+resource "random_password" "grafana" {
+  length  = 24
   special = false
 }
 
@@ -28,7 +28,7 @@ locals {
     "/sonar/db/senha"          = random_password.db.result
     "/sonar/api/token-servico" = random_password.token_servico.result
     "/sonar/api/sal-hash"      = random_password.sal_hash.result
-    "/sonar/metricas/senha"    = random_password.metricas.result
+    "/sonar/grafana/senha"     = random_password.grafana.result
   }
 }
 

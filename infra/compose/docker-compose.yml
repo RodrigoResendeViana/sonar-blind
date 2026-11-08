@@ -26,7 +26,6 @@ services:
       SONAR_SITE_ADDRESS: ${SONAR_SITE_ADDRESS:-http://localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ${SONAR_SEGREDOS_DIR:-./local}/caddy:/etc/caddy/segredos:ro
       - caddy_data:/data
       - caddy_config:/config
     sysctls:
@@ -90,7 +89,7 @@ services:
     cap_drop: [ALL]
     mem_limit: 128m
 
-  # métricas da EC2 (CPU, memória, disco) para o Prometheus do servidor local
+  # métricas da EC2 (CPU, memória, disco) para o Prometheus
   node-exporter:
     <<: *padrao
     image: prom/node-exporter:v1.12.1
@@ -112,9 +111,73 @@ services:
       - ollama:/root/.ollama
     mem_limit: 5g
 
+  # ---------------------------------------------------------------- monitoramento (só na EC2)
+  prometheus:
+    <<: *padrao
+    image: prom/prometheus:v3.15.1
+    profiles: [producao]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ../monitoramento/prometheus:/etc/prometheus:ro
+      - prometheus_dados:/prometheus
+    cap_drop: [ALL]
+    mem_limit: 384m
+
+  alertmanager:
+    <<: *padrao
+    image: prom/alertmanager:v0.34.2
+    profiles: [producao]
+    entrypoint: ["/bin/sh", "/etc/alertmanager/iniciar.sh"]
+    environment:
+      TELEGRAM_CHAT_ID: ${SONAR_TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ../monitoramento/alertmanager:/etc/alertmanager:ro
+      - ${SONAR_SEGREDOS_DIR:-./local}/alertmanager:/etc/alertmanager/segredos:ro
+      - alertmanager_dados:/alertmanager
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    mem_limit: 128m
+
+  blackbox:
+    <<: *padrao
+    image: prom/blackbox-exporter:v0.29.1
+    profiles: [producao]
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ../monitoramento/blackbox:/etc/blackbox:ro
+    cap_drop: [ALL]
+    mem_limit: 64m
+
+  # painel em https://<domínio>/grafana (usuário admin, senha no Parameter Store)
+  grafana:
+    <<: *padrao
+    image: grafana/grafana:13.3.0
+    profiles: [producao]
+    environment:
+      GF_SERVER_ROOT_URL: https://${SONAR_SITE_ADDRESS:-localhost}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${SONAR_GRAFANA_PASSWORD:-}
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sonar.json
+    volumes:
+      - ../monitoramento/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoramento/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_dados:/var/lib/grafana
+    depends_on: [prometheus]
+    mem_limit: 256m
+
 volumes:
   caddy_data:
   caddy_config:
   pg_data:
   mosquitto_data:
   ollama:
+  prometheus_dados:
+  alertmanager_dados:
+  grafana_dados:

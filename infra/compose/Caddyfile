@@ -25,16 +25,10 @@
 		reverse_proxy api:8000
 	}
 
-	# métricas para o Prometheus do servidor local, sempre com senha
-	handle /metrics {
-		import /etc/caddy/segredos/metrics_auth.caddy
-		reverse_proxy api:8000
-	}
-
-	handle /node-metrics {
-		import /etc/caddy/segredos/metrics_auth.caddy
-		rewrite * /metrics
-		reverse_proxy node-exporter:9100
+	# Grafana (monitoramento): ele mesmo pede login
+	handle /grafana* {
+		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+		reverse_proxy grafana:3000
 	}
 
 	# API (o prefixo /api sai aqui; o uvicorn roda com --root-path /api)

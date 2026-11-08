@@ -19,4 +19,4 @@ antes dos créditos. Para economizar: pare a EC2 quando ninguém estiver avalian
 Sem o LLM local (perfil `ia` desligado), uma t3.small de 2 GiB bastaria, por cerca de US$ 8 no
 mesmo período. Confira os preços na calculadora da AWS antes de fechar o PDF.
 
-Fora da AWS: o servidor local (monitoramento e Airflow) e o domínio, que o grupo já tinha.
+Fora da AWS: o domínio, que o grupo já tinha (e o Airflow do Big Data, que roda onde a equipe escolher).

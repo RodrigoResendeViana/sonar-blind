@@ -1,38 +1,39 @@
-# Monitoramento (servidor local)
+# Monitoramento (na EC2)
 
-Prometheus, Alertmanager, Grafana e blackbox exporter rodando no seu servidor. Eles só fazem
-**conexões de saída** (buscam as métricas na EC2 por HTTPS, com senha, e mandam alertas ao
-Telegram), então o servidor não precisa de IP público nem de porta aberta no roteador.
+Prometheus, Alertmanager, blackbox exporter e Grafana sobem junto com o Sonar, no mesmo
+`docker compose` da EC2 (perfil `producao`). Nada roda no servidor local.
 
 | O quê | Onde |
 |---|---|
-| Métricas da API (tráfego, erros, latência, Olho Vivo, dispositivos) | `https://sonar.rodrigoviana.app.br/metrics` |
-| Métricas da EC2 (CPU, memória, disco) | `https://sonar.rodrigoviana.app.br/node-metrics` |
-| Teste de fora (site no ar, validade do certificado) | blackbox exporter |
-| Painel | Grafana em `http://<ip-do-servidor>:3000` (usuário `admin`) |
+| Métricas da API (tráfego, erros, latência, Olho Vivo, dispositivos) | Prometheus lê `api:8000/metrics` pela rede interna |
+| Métricas da EC2 (CPU, memória, disco) | `node-exporter:9100`, também pela rede interna |
+| Teste de fora (site no ar, validade do certificado) | blackbox exporter acessando o domínio pela internet |
+| Painel | **https://sonar.rodrigoviana.app.br/grafana** (usuário `admin`) |
 
-## Subir
+Nenhuma dessas portas fica aberta para a internet: só o Grafana, atrás do Caddy, com login.
 
-Precisa de Docker com o plugin Compose (no Linux: `sudo apt install docker.io docker-compose-v2`, ou o Docker Desktop).
+## Senha do Grafana
 
-1. **Bot do Telegram.** No Telegram, fale com o `@BotFather`, mande `/newbot` e guarde o token. Mande
-   qualquer mensagem para o seu bot e abra `https://api.telegram.org/bot<TOKEN>/getUpdates`: o número
-   em `"chat":{"id": ...}` é o seu chat_id.
-2. **Segredos** (ficam fora do Git):
-   ```bash
-   cd infra/monitoramento
-   printf '%s' "$(aws ssm get-parameter --name /sonar/metricas/senha --with-decryption --query Parameter.Value --output text)" > segredos/metricas_senha
-   printf '%s' "TOKEN-DO-BOT" > segredos/telegram_token
-   printf '%s' "uma-senha-para-o-grafana" > segredos/grafana_senha
-   cp .env.example .env   # e preencha TELEGRAM_CHAT_ID
-   ```
-   O comando `aws` roda no CloudShell; se o seu servidor não tiver o AWS CLI, copie a senha de lá.
-3. `docker compose up -d` e abra o Grafana. O painel "Sonar — sinais de ouro" já vem pronto.
+Gerada pelo Terraform. No CloudShell:
 
-Prometheus (`:9090`) e Alertmanager (`:9093`) ficam só em `127.0.0.1`. Para vê-los de outra
-máquina da rede: `ssh -L 9090:localhost:9090 usuario@servidor`.
+```bash
+aws ssm get-parameter --name /sonar/grafana/senha --with-decryption --query Parameter.Value --output text
+```
 
-## Alertas (Telegram)
+## Alertas no Telegram
+
+1. No Telegram, fale com o `@BotFather`, mande `/newbot` e guarde o token.
+2. Mande qualquer mensagem para o bot e abra `https://api.telegram.org/bot<TOKEN>/getUpdates`; o
+   número em `"chat":{"id": ...}` é o chat_id.
+3. Grave os dois no Parameter Store (CloudShell) e rode o deploy de novo (Actions > ci-cd > Run workflow):
+
+```bash
+read -rsp "Token do bot: " T && echo
+aws ssm put-parameter --name /sonar/telegram/token --type SecureString --value "$T" --overwrite && unset T
+aws ssm put-parameter --name /sonar/telegram/chat-id --type String --value "SEU_CHAT_ID" --overwrite
+```
+
+Sem esses parâmetros, o Alertmanager sobe e os alertas aparecem só no Grafana/Prometheus.
 
 | Alerta | Quando |
 |---|---|
@@ -45,7 +46,6 @@ máquina da rede: `ssh -L 9090:localhost:9090 usuario@servidor`.
 | MemoriaDaEC2, DiscoDaEC2 | memória abaixo de 10%; disco abaixo de 15% |
 | CertificadoVencendo | o HTTPS vence em menos de 14 dias |
 
-**Disparar um alerta para o print:** desligue o Sonar Ponto da tomada e espere 5 min (alerta
-"Sonar Ponto offline"). Ou, pelo SSM, pare a API por 3 min:
-`aws ssm start-session --target <id-da-instancia>` e `sudo docker compose -f /opt/sonar/repo/infra/compose/docker-compose.yml stop api`
-(depois, `start api`).
+**Disparar um alerta para o print:** desligue o Sonar Ponto e espere 5 min ("Sonar Ponto offline").
+Observação: se a própria EC2 cair, o monitoramento cai junto; o teste de fumaça do pipeline e o
+AWS Budgets continuam de fora.

@@ -1,2 +1,0 @@
-# Na sua máquina, /metrics fica sem senha (só em http://localhost).
-# Em produção, o deploy.sh troca este arquivo pelo basic_auth com a senha do Parameter Store.

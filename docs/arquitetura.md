@@ -14,6 +14,7 @@ flowchart LR
       M[Mosquitto<br/>MQTT TLS 8883]
       NE[node-exporter]
       O[Ollama<br/>perfil ia]
+      PR[Prometheus + Alertmanager<br/>+ Grafana em /grafana]
     end
     SSM[SSM e<br/>Parameter Store]
     B[AWS Budgets]
@@ -24,10 +25,6 @@ flowchart LR
   end
   SB[Sonar Bordo<br/>ESP32 na cabine]
   OV[Olho Vivo<br/>SPTrans]
-  subgraph Casa[Servidor local]
-    PR[Prometheus + Alertmanager + Grafana]
-    AF[Airflow do Big Data]
-  end
   GH[GitHub Actions<br/>Gitleaks, Semgrep, Trivy]
   GHCR[(GHCR)]
   TG[Telegram]
@@ -43,12 +40,13 @@ flowchart LR
   GH -->|imagens| GHCR
   GH -->|OIDC + ssm send-command| SSM --> EC2
   EC2 -->|pull| GHCR
-  PR -->|/metrics com senha| C
+  PR -->|rede interna| API
   PR --> TG
 ```
 
-**Por que assim.** A EC2 é a única máquina exposta à internet (portas 80, 443 e 8883). O
-servidor local, os ESP32 e o notebook da câmera só fazem conexões de saída, então não precisam de
+**Por que assim.** A EC2 é a única máquina exposta à internet (portas 80, 443 e 8883), e o
+monitoramento roda nela, lendo as métricas pela rede interna do compose. O
+os ESP32 e o notebook da câmera só fazem conexões de saída, então não precisam de
 porta aberta. O pipeline publica sem SSH e sem chave da AWS guardada: troca o token OIDC do
 GitHub por credenciais de uma hora, que só podem mandar comando para esta EC2.
 
@@ -64,7 +62,7 @@ passa direto, a ocorrência vai para o robô de RPA, que devolve o protocolo.
 | Camada | Controle |
 |---|---|
 | Borda | só 80/443/8883; HTTPS automático; HSTS, CSP restritiva, Permissions-Policy |
-| Aplicação | validação de entrada (Pydantic), limite de requisições, token só para o robô, `/metrics` com senha |
+| Aplicação | validação de entrada (Pydantic), limite de requisições, token só para o robô, métricas só na rede interna, Grafana com login |
 | Dispositivos | usuário e senha por dispositivo, ACL por tópico, TLS com as raízes da Let's Encrypt fixadas no firmware |
 | Containers | sem root, `no-new-privileges`, `cap_drop: ALL`, sistema de arquivos só leitura, limite de memória |
 | Nuvem | IMDSv2 com hop limit 1 (containers não pegam a credencial da EC2), disco cifrado, papéis IAM mínimos, segredos no Parameter Store |
