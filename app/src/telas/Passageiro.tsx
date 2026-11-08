@@ -223,7 +223,7 @@ export default function Passageiro() {
     if (nova) comecar(nova)
   }
 
-  async function demonstracao(cenario: 'embarque' | 'nao_parou') {
+  async function demonstracao(cenario: 'embarque' | 'nao_parou' | 'maquete') {
     const nova = await executar(() => api.iniciarDemo(cenario))
     if (nova) {
       setParadaId('demo')
@@ -388,6 +388,9 @@ export default function Passageiro() {
               </button>
               <button type="button" disabled={ocupado} onClick={() => demonstracao('nao_parou')}>
                 Ver um ônibus que não para
+              </button>
+              <button type="button" disabled={ocupado} onClick={() => demonstracao('maquete')}>
+                Usar a maquete (Sonar Ponto e Sonar Bordo de verdade)
               </button>
             </div>
           </section>
