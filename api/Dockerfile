@@ -6,9 +6,14 @@ FROM python:3.13-slim AS dependencias
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 COPY requirements.txt .
-RUN python -m venv /venv && /venv/bin/pip install --require-virtualenv -r requirements.txt
+# o pip sai da venv: ele traz cópias próprias de urllib3, msgpack e setuptools que o Trivy aponta
+RUN python -m venv /venv && /venv/bin/pip install --require-virtualenv -r requirements.txt \
+ && /venv/bin/python -m pip uninstall -y pip
 
 FROM python:3.13-slim
+# correções de segurança do Debian que ainda não entraram na imagem base; sem pip na imagem final
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
+ && python -m pip uninstall -y pip
 LABEL org.opencontainers.image.title="sonar-api" \
       org.opencontainers.image.description="API do Sonar (FIAP Global Solution 2026.2)"
 ENV PATH=/venv/bin:$PATH \
