@@ -1,0 +1,37 @@
+# segredos: nunca no Git
+.env
+.env.*
+!.env.example
+*.tfvars
+!*.tfvars.example
+*.tfstate
+*.tfstate.*
+.terraform/
+firmware/include/secrets.h
+infra/monitoramento/segredos/*
+!infra/monitoramento/segredos/LEIA-ME.md
+infra/compose/.env
+
+# modelos de visão (grandes; ficam com a equipe de Visão)
+edge/modelos/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+*.db
+
+# Node
+node_modules/
+app/dist/
+app/dev-dist/
+app/coverage/
+
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+.DS_Store
