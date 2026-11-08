@@ -1,0 +1,9 @@
+[project]
+name = "sonar-api"
+version = "0.1.0"
+description = "API do Sonar: hub entre o app, o Sonar Ponto, o Sonar Bordo, a IA e o robô de ocorrências"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
