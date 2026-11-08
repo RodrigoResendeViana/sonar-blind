@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "author": "Sonar - FIAP Global Solution 2026.2",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-hc-sr04", "id": "ultrassom", "top": -170, "left": -40, "attrs": { "distance": "300" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 60, "left": 180, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-led", "id": "led", "top": -20, "left": 190, "attrs": { "color": "yellow", "label": "LED p/ motorista" } },
+    { "type": "wokwi-buzzer", "id": "buzzer", "top": 140, "left": 220, "attrs": { "volume": "0.1" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "ultrassom:VCC", "esp:5V", "red", [] ],
+    [ "ultrassom:GND", "esp:GND.1", "black", [] ],
+    [ "ultrassom:TRIG", "esp:26", "green", [] ],
+    [ "ultrassom:ECHO", "esp:27", "blue", [] ],
+    [ "esp:16", "r1:2", "orange", [] ],
+    [ "r1:1", "led:A", "orange", [] ],
+    [ "led:C", "esp:GND.2", "black", [] ],
+    [ "esp:25", "buzzer:2", "purple", [] ],
+    [ "buzzer:1", "esp:GND.2", "black", [] ]
+  ],
+  "dependencies": {}
+}
