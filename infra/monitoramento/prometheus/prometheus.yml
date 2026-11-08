@@ -1,0 +1,53 @@
+# Busca as métricas da API e da EC2 por HTTPS, com senha, e testa o site de fora.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    projeto: sonar
+
+rule_files:
+  - /etc/prometheus/alertas.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: sonar-api
+    scheme: https
+    metrics_path: /metrics
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/segredos/metricas_senha
+    static_configs:
+      - targets: ["sonar.rodrigoviana.app.br"]
+
+  - job_name: sonar-ec2
+    scheme: https
+    metrics_path: /node-metrics
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/segredos/metricas_senha
+    static_configs:
+      - targets: ["sonar.rodrigoviana.app.br"]
+
+  - job_name: sonar-site
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://sonar.rodrigoviana.app.br/healthz
+          - https://sonar.rodrigoviana.app.br/
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

@@ -1,0 +1,87 @@
+groups:
+  - name: sonar
+    rules:
+      - alert: SonarApiForaDoAr
+        expr: up{job="sonar-api"} == 0
+        for: 2m
+        labels:
+          severidade: critica
+        annotations:
+          resumo: "A API do Sonar não responde há 2 min."
+
+      - alert: SiteIndisponivel
+        expr: probe_success{job="sonar-site"} == 0
+        for: 2m
+        labels:
+          severidade: critica
+        annotations:
+          resumo: "{{ $labels.instance }} está fora do ar para quem acessa de fora."
+
+      - alert: OlhoVivoIndisponivel
+        expr: sonar_olhovivo_disponivel == 0 and on() sonar_olhovivo_configurado == 1
+        for: 5m
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "Olho Vivo indisponível há 5 min: o app avisa os usuários e segue pela câmera."
+
+      - alert: SonarPontoOffline
+        expr: sonar_dispositivo_online{tipo="ponto"} == 0
+        for: 5m
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "Sonar Ponto {{ $labels.id }} offline há 5 min."
+
+      - alert: ErrosAcimaDe5PorCento
+        expr: >
+          sum(rate(sonar_http_requisicoes_total{status=~"5.."}[5m]))
+          / sum(rate(sonar_http_requisicoes_total[5m])) > 0.05
+          and on() sum(rate(sonar_http_requisicoes_total[5m])) > 0.02
+        for: 5m
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "Mais de 5% das requisições da API com erro nos últimos 5 min."
+
+      - alert: LatenciaAlta
+        expr: histogram_quantile(0.95, sum by (le) (rate(sonar_http_latencia_segundos_bucket[5m]))) > 1
+        for: 10m
+        labels:
+          severidade: media
+        annotations:
+          resumo: "p95 da API acima de 1 s há 10 min."
+
+      - alert: IALenta
+        expr: histogram_quantile(0.95, sum by (le) (rate(sonar_ia_latencia_segundos_bucket[5m]))) > 8
+        for: 5m
+        labels:
+          severidade: media
+        annotations:
+          resumo: "A IA está levando mais de 8 s (p95) para responder."
+
+      - alert: MemoriaDaEC2
+        expr: node_memory_MemAvailable_bytes{job="sonar-ec2"} / node_memory_MemTotal_bytes{job="sonar-ec2"} < 0.10
+        for: 5m
+        labels:
+          severidade: alta
+        annotations:
+          resumo: "Menos de 10% de memória livre na EC2."
+
+      - alert: DiscoDaEC2
+        expr: >
+          node_filesystem_avail_bytes{job="sonar-ec2",mountpoint="/"}
+          / node_filesystem_size_bytes{job="sonar-ec2",mountpoint="/"} < 0.15
+        for: 10m
+        labels:
+          severidade: media
+        annotations:
+          resumo: "Menos de 15% de disco livre na EC2."
+
+      - alert: CertificadoVencendo
+        expr: probe_ssl_earliest_cert_expiry{job="sonar-site"} - time() < 14 * 86400
+        for: 1h
+        labels:
+          severidade: media
+        annotations:
+          resumo: "O certificado HTTPS vence em menos de 14 dias."
