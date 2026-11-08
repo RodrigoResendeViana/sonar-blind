@@ -3,7 +3,7 @@ email_alertas = "seu-email@exemplo.com"
 
 # os padrões abaixo já servem; mude só se precisar
 # dominio              = "sonar.rodrigoviana.app.br"
-# repositorio_github   = "RodrigoResendeViana/sonar"
+# repositorio_github   = "RodrigoResendeViana/sonar-blind"
 # tipo_instancia       = "m7i-flex.large"
 # limite_orcamento_usd = 40
 # usuarios_mqtt        = ["ponto-demo", "camera-demo", "bordo-90001"]
