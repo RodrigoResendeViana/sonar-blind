@@ -84,7 +84,7 @@ registro.br > entrar > `rodrigoviana.app.br` > **DNS** > **Editar zona** > **Nov
 | A | `sonar` | o `ip_publico` do Terraform |
 
 Salve e confira (pode levar de minutos a algumas horas): `nslookup sonar.rodrigoviana.app.br`.
-O seu servidor local não entra aqui: ele não precisa de IP público.
+
 
 ## 6. Pipeline
 
@@ -121,10 +121,11 @@ Elas vão no `firmware/include/secrets.h` (veja `firmware/README.md`) e nas vari
 serviço da câmera (`edge/README.md`). Para mais dispositivos, acrescente em `usuarios_mqtt` no
 `terraform.tfvars`, rode `terraform apply` e o deploy de novo.
 
-## 8. Monitoramento no servidor local
+## 8. Monitoramento
 
-Siga `infra/monitoramento/README.md`: bot do Telegram, três arquivos de senha e
-`docker compose up -d`.
+Sobe sozinho com o deploy: abra `https://sonar.rodrigoviana.app.br/grafana` (usuário `admin`,
+senha em `aws ssm get-parameter --name /sonar/grafana/senha --with-decryption --query Parameter.Value --output text`).
+Para os alertas irem ao Telegram, siga `infra/monitoramento/README.md`.
 
 ## 9. Prints para o PDF de DevOps
 
@@ -133,7 +134,7 @@ Siga `infra/monitoramento/README.md`: bot do Telegram, três arquivos de senha e
 - AWS: EC2 com o papel do SSM, security group só com 80/443/8883, Parameter Store com os
   parâmetros `/sonar/*` (sem mostrar valores), AWS Budgets.
 - GHCR com as duas imagens; o app aberto no domínio com cadeado.
-- Grafana com o painel "Sonar — sinais de ouro" e um alerta chegando no Telegram.
+- Grafana (`/grafana`) com o painel "Sonar — sinais de ouro" e um alerta chegando no Telegram.
 
 ## 10. Depois da correção
 
