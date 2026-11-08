@@ -1,0 +1,120 @@
+# Sonar: a mesma definição roda na EC2 (imagens do GHCR) e na sua máquina
+# (com docker-compose.local.yml, que compila as imagens a partir do código).
+# Variáveis: .env ao lado deste arquivo (veja .env.example). Em produção, o deploy.sh
+# gera o .env a partir do AWS Parameter Store; nenhum segredo entra nas imagens.
+name: sonar
+
+x-padrao: &padrao
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web:
+    <<: *padrao
+    image: ${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}/sonar-web:${SONAR_IMAGE_TAG:-latest}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SONAR_SITE_ADDRESS: ${SONAR_SITE_ADDRESS:-http://localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${SONAR_SEGREDOS_DIR:-./local}/caddy:/etc/caddy/segredos:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on: [api]
+    mem_limit: 256m
+
+  api:
+    <<: *padrao
+    image: ${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}/sonar-api:${SONAR_IMAGE_TAG:-latest}
+    environment:
+      SONAR_DATABASE_URL: postgresql+psycopg://sonar:${SONAR_DB_PASSWORD:?defina SONAR_DB_PASSWORD no .env}@db:5432/sonar
+      SONAR_MQTT_HOST: mqtt
+      SONAR_MQTT_PORT: "1883"
+      SONAR_MQTT_USUARIO: sonar-api
+      SONAR_MQTT_SENHA: ${SONAR_MQTT_API_PASSWORD:-}
+      SONAR_OLHOVIVO_TOKEN: ${SONAR_OLHOVIVO_TOKEN:-}
+      SONAR_TOKEN_SERVICO: ${SONAR_TOKEN_SERVICO:-}
+      SONAR_SAL_HASH: ${SONAR_SAL_HASH:?defina SONAR_SAL_HASH no .env}
+      SONAR_IA_URL: ${SONAR_IA_URL:-}
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      db:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+    mem_limit: 512m
+
+  db:
+    <<: *padrao
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?defina SONAR_DB_PASSWORD no .env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  mqtt:
+    <<: *padrao
+    image: eclipse-mosquitto:2
+    user: "1883:1883"
+    command: ["mosquitto", "-c", "/mosquitto/config/${SONAR_MQTT_CONF:-mosquitto.local.conf}"]
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mosquitto:/mosquitto/config:ro
+      - ${SONAR_SEGREDOS_DIR:-./local}/mosquitto:/mosquitto/segredos:ro
+      - mosquitto_data:/mosquitto/data
+    cap_drop: [ALL]
+    mem_limit: 128m
+
+  # métricas da EC2 (CPU, memória, disco) para o Prometheus do servidor local
+  node-exporter:
+    <<: *padrao
+    image: prom/node-exporter:v1.12.1
+    profiles: [producao]
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    cap_drop: [ALL]
+    read_only: true
+    mem_limit: 64m
+
+  # LLM local da equipe de GenAI. Liga com COMPOSE_PROFILES=ia.
+  ollama:
+    <<: *padrao
+    image: ollama/ollama:latest
+    profiles: [ia]
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 5g
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:
+  mosquitto_data:
+  ollama:

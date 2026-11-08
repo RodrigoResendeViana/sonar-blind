@@ -1,0 +1,16 @@
+# Para rodar tudo na sua máquina, a partir do código:
+#   cp .env.example .env
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+# Abra http://localhost. Métricas: http://localhost/metrics (usuário prometheus, senha dev).
+services:
+  web:
+    build: ../../app
+    image: sonar-web:local
+
+  api:
+    build: ../../api
+    image: sonar-api:local
+
+  mqtt:
+    ports:
+      - "127.0.0.1:1883:1883"
