@@ -1,0 +1,3 @@
+Coloque aqui um vídeo curto de ônibus chegando ao ponto, com o nome onibus.mp4.
+A tela "Ponto (simulado)" do app toca esse vídeo enquanto publica a detecção.
+Antes de publicar, borre rostos e placas de carro (LGPD).

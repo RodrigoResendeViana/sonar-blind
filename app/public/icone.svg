@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sonar">
+  <rect width="512" height="512" rx="96" fill="#0b1020"/>
+  <g fill="none" stroke="#ffd84d" stroke-linecap="round" stroke-width="34">
+    <path d="M196 316a84 84 0 0 1 0-120"/>
+    <path d="M316 196a84 84 0 0 1 0 120"/>
+    <path d="M136 376a168 168 0 0 1 0-240"/>
+    <path d="M376 136a168 168 0 0 1 0 240"/>
+  </g>
+  <circle cx="256" cy="256" r="34" fill="#ffd84d"/>
+</svg>
