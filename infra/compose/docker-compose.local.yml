@@ -1,7 +1,7 @@
 # Para rodar tudo na sua máquina, a partir do código:
 #   cp .env.example .env
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
-# Abra http://localhost. Métricas: http://localhost/metrics (usuário prometheus, senha dev).
+# Abra http://localhost. Métricas sem senha em http://localhost/metrics (só na sua máquina).
 services:
   web:
     build: ../../app

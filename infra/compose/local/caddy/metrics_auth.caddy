@@ -1,5 +1,2 @@
-# Só para rodar na sua máquina: usuário "prometheus", senha "dev".
-# Em produção, o deploy.sh gera este arquivo com a senha do Parameter Store.
-basic_auth {
-	prometheus $2b$10$Y65f.99rU1alZxvHZSraIOkQkrDGHoL9zd2xa2ESoO4DdvFfYDtlO
-}
+# Na sua máquina, /metrics fica sem senha (só em http://localhost).
+# Em produção, o deploy.sh troca este arquivo pelo basic_auth com a senha do Parameter Store.
