@@ -1,0 +1,46 @@
+#!/bin/bash
+# Prepara a EC2 do Sonar no primeiro boot: Docker, Docker Compose, git, htpasswd e swap.
+# O deploy em si vem depois, pelo pipeline (AWS SSM).
+set -euxo pipefail
+exec > >(tee -a /var/log/sonar-user-data.log) 2>&1
+
+# o Elastic IP é associado alguns segundos depois do boot
+for _ in $(seq 1 90); do
+  if curl -fsS -m 5 -o /dev/null https://github.com; then break; fi
+  sleep 5
+done
+
+dnf -y install docker git httpd-tools
+
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'JSON'
+{
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "10m", "max-file": "3" },
+  "live-restore": true
+}
+JSON
+systemctl enable --now docker
+
+# Docker Compose: o Amazon Linux 2023 não empacota o plugin; o checksum é conferido
+mkdir -p /usr/local/lib/docker/cli-plugins
+cd /tmp
+base="https://github.com/docker/compose/releases/latest/download"
+curl -fsSL --retry 5 -o docker-compose "$base/docker-compose-linux-x86_64"
+curl -fsSL --retry 5 -o docker-compose.sha256 "$base/docker-compose-linux-x86_64.sha256"
+echo "$(cut -d' ' -f1 docker-compose.sha256)  docker-compose" | sha256sum -c -
+install -m 755 docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+
+# 2 GB de swap: folga para o LLM local
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
+fi
+
+install -d -m 755 /opt/sonar
+git clone --depth 1 "https://github.com/${repositorio}.git" /opt/sonar/repo \
+  || echo "clone falhou: o repositório precisa ser público (o pipeline tenta de novo no deploy)"

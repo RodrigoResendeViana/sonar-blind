@@ -1,0 +1,69 @@
+# Arquitetura
+
+```mermaid
+flowchart LR
+  subgraph Usuarios[Quem usa]
+    P[Passageiro cego<br/>PWA com leitor de tela]
+    A[Avaliador<br/>simuladores e painel]
+  end
+  subgraph AWS[AWS us-east-1 · Terraform]
+    subgraph EC2[EC2 m7i-flex.large · docker compose]
+      C[Caddy<br/>HTTPS, PWA, cabeçalhos]
+      API[API FastAPI]
+      DB[(Postgres)]
+      M[Mosquitto<br/>MQTT TLS 8883]
+      NE[node-exporter]
+      O[Ollama<br/>perfil ia]
+      PR[Prometheus + Alertmanager<br/>+ Grafana em /grafana]
+    end
+    SSM[SSM e<br/>Parameter Store]
+    B[AWS Budgets]
+  end
+  subgraph Ponto[Ponto de ônibus]
+    SP[Sonar Ponto<br/>ESP32 + ultrassom + LED + buzzer]
+    CAM[Serviço da câmera<br/>notebook + YOLO + OCR]
+  end
+  SB[Sonar Bordo<br/>ESP32 na cabine]
+  OV[Olho Vivo<br/>SPTrans]
+  GH[GitHub Actions<br/>Gitleaks, Semgrep, Trivy]
+  GHCR[(GHCR)]
+  TG[Telegram]
+
+  P & A -->|HTTPS| C --> API
+  API --> DB
+  API <--> M
+  API -->|previsão, cache 30 s| OV
+  API -.->|perfil ia| O
+  SP <-->|MQTT TLS| M
+  CAM -->|só o texto da linha| M
+  SB <-->|MQTT TLS| M
+  GH -->|imagens| GHCR
+  GH -->|OIDC + ssm send-command| SSM --> EC2
+  EC2 -->|pull| GHCR
+  PR -->|rede interna| API
+  PR --> TG
+```
+
+**Por que assim.** A EC2 é a única máquina exposta à internet (portas 80, 443 e 8883), e o
+monitoramento roda nela, lendo as métricas pela rede interna do compose. O
+os ESP32 e o notebook da câmera só fazem conexões de saída, então não precisam de
+porta aberta. O pipeline publica sem SSH e sem chave da AWS guardada: troca o token OIDC do
+GitHub por credenciais de uma hora, que só podem mandar comando para esta EC2.
+
+**Fluxo de uma espera.** O app pergunta (`/ia/perguntar`), o usuário chega ao ponto
+(`POST /esperas`), a API publica `ativar` no tópico retido do ponto, o Sonar Ponto pisca o LED
+e apita, a API acompanha o Olho Vivo e avisa o Sonar Bordo do ônibus certo a ~4 minutos, o
+motorista aperta "ciente", a câmera lê o letreiro, o Sonar Ponto junta com o ultrassom e publica
+a passagem, a API fala "é o seu" pelo SSE e cruza com o "embarquei" do usuário. Se o ônibus
+passa direto, a ocorrência vai para o robô de RPA, que devolve o protocolo.
+
+**Segurança em camadas.**
+
+| Camada | Controle |
+|---|---|
+| Borda | só 80/443/8883; HTTPS automático; HSTS, CSP restritiva, Permissions-Policy |
+| Aplicação | validação de entrada (Pydantic), limite de requisições, token só para o robô, métricas só na rede interna, Grafana com login |
+| Dispositivos | usuário e senha por dispositivo, ACL por tópico, TLS com as raízes da Let's Encrypt fixadas no firmware |
+| Containers | sem root, `no-new-privileges`, `cap_drop: ALL`, sistema de arquivos só leitura, limite de memória |
+| Nuvem | IMDSv2 com hop limit 1 (containers não pegam a credencial da EC2), disco cifrado, papéis IAM mínimos, segredos no Parameter Store |
+| Pipeline | Gitleaks, Semgrep, Trivy (IaC, dependências e imagens), SBOM, ações fixadas em versões que rodam no Node 24, Dependabot |

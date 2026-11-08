@@ -1,0 +1,183 @@
+# Sonar: a mesma definição roda na EC2 (imagens do GHCR) e na sua máquina
+# (com docker-compose.local.yml, que compila as imagens a partir do código).
+# Variáveis: .env ao lado deste arquivo (veja .env.example). Em produção, o deploy.sh
+# gera o .env a partir do AWS Parameter Store; nenhum segredo entra nas imagens.
+name: sonar
+
+x-padrao: &padrao
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web:
+    <<: *padrao
+    image: ${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}/sonar-web:${SONAR_IMAGE_TAG:-latest}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SONAR_SITE_ADDRESS: ${SONAR_SITE_ADDRESS:-http://localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on: [api]
+    mem_limit: 256m
+
+  api:
+    <<: *padrao
+    image: ${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}/sonar-api:${SONAR_IMAGE_TAG:-latest}
+    environment:
+      SONAR_DATABASE_URL: postgresql+psycopg://sonar:${SONAR_DB_PASSWORD:?defina SONAR_DB_PASSWORD no .env}@db:5432/sonar
+      SONAR_MQTT_HOST: mqtt
+      SONAR_MQTT_PORT: "1883"
+      SONAR_MQTT_USUARIO: sonar-api
+      SONAR_MQTT_SENHA: ${SONAR_MQTT_API_PASSWORD:-}
+      SONAR_OLHOVIVO_TOKEN: ${SONAR_OLHOVIVO_TOKEN:-}
+      SONAR_TOKEN_SERVICO: ${SONAR_TOKEN_SERVICO:-}
+      SONAR_SAL_HASH: ${SONAR_SAL_HASH:?defina SONAR_SAL_HASH no .env}
+      SONAR_IA_URL: ${SONAR_IA_URL:-}
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      db:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+    mem_limit: 512m
+
+  db:
+    <<: *padrao
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?defina SONAR_DB_PASSWORD no .env}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  mqtt:
+    <<: *padrao
+    image: eclipse-mosquitto:2
+    user: "1883:1883"
+    command: ["mosquitto", "-c", "/mosquitto/config/${SONAR_MQTT_CONF:-mosquitto.local.conf}"]
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mosquitto:/mosquitto/config:ro
+      - ${SONAR_SEGREDOS_DIR:-./local}/mosquitto:/mosquitto/segredos:ro
+      - mosquitto_data:/mosquitto/data
+    cap_drop: [ALL]
+    mem_limit: 128m
+
+  # métricas da EC2 (CPU, memória, disco) para o Prometheus
+  node-exporter:
+    <<: *padrao
+    image: prom/node-exporter:v1.12.1
+    profiles: [producao]
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    cap_drop: [ALL]
+    read_only: true
+    mem_limit: 64m
+
+  # LLM local da equipe de GenAI. Liga com COMPOSE_PROFILES=ia.
+  ollama:
+    <<: *padrao
+    image: ollama/ollama:latest
+    profiles: [ia]
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 5g
+
+  # ---------------------------------------------------------------- monitoramento (só na EC2)
+  prometheus:
+    <<: *padrao
+    image: prom/prometheus:v3.15.1
+    profiles: [producao]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ../monitoramento/prometheus:/etc/prometheus:ro
+      - prometheus_dados:/prometheus
+    cap_drop: [ALL]
+    mem_limit: 384m
+
+  alertmanager:
+    <<: *padrao
+    image: prom/alertmanager:v0.34.2
+    profiles: [producao]
+    entrypoint: ["/bin/sh", "/etc/alertmanager/iniciar.sh"]
+    environment:
+      TELEGRAM_CHAT_ID: ${SONAR_TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ../monitoramento/alertmanager:/etc/alertmanager:ro
+      - ${SONAR_SEGREDOS_DIR:-./local}/alertmanager:/etc/alertmanager/segredos:ro
+      - alertmanager_dados:/alertmanager
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    mem_limit: 128m
+
+  blackbox:
+    <<: *padrao
+    image: prom/blackbox-exporter:v0.29.1
+    profiles: [producao]
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ../monitoramento/blackbox:/etc/blackbox:ro
+    cap_drop: [ALL]
+    mem_limit: 64m
+
+  # painel em https://<domínio>/grafana (usuário admin, senha no Parameter Store)
+  grafana:
+    <<: *padrao
+    image: grafana/grafana:13.3.0
+    profiles: [producao]
+    environment:
+      GF_SERVER_ROOT_URL: https://${SONAR_SITE_ADDRESS:-localhost}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${SONAR_GRAFANA_PASSWORD:-}
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sonar.json
+    volumes:
+      - ../monitoramento/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoramento/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_dados:/var/lib/grafana
+    depends_on: [prometheus]
+    mem_limit: 256m
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:
+  mosquitto_data:
+  ollama:
+  prometheus_dados:
+  alertmanager_dados:
+  grafana_dados:

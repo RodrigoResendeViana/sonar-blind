@@ -1,0 +1,26 @@
+# Exceções do Trivy. Cada uma tem justificativa; revisar a cada entrega.
+# (os dois formatos de ID, antigo e novo, para valer em qualquer versão do Trivy)
+
+# Security group aberto para a internet: o site (80/443) e o MQTT com TLS (8883) são
+# públicos por definição. A porta 22 não existe; a administração é pelo SSM.
+AVD-AWS-0107
+AWS-0107
+
+# Saída liberada: a EC2 baixa imagens do GHCR e fala com o SSM, o Olho Vivo e o Let's Encrypt.
+AVD-AWS-0104
+AWS-0104
+
+# Curinga no IAM: ssm:GetCommandInvocation e ssm:ListCommandInvocations não aceitam recurso
+# específico; a leitura de parâmetros está restrita ao caminho /sonar/*.
+AVD-AWS-0057
+AWS-0057
+
+# State do Terraform cifrado com SSE-S3 (AES-256). Uma chave KMS própria custaria US$ 1/mês
+# e não muda o risco num bucket privado, com bloqueio de acesso público e só TLS.
+AVD-AWS-0132
+AWS-0132
+
+# Caddy 2: golang.org/x/net/html (DoS no parser de HTML), compilado dentro do binário do Caddy.
+# O Caddyfile do Sonar não usa templates nem processa HTML. Remover quando sair caddy:2-alpine
+# com golang.org/x/net >= 0.62.0.
+CVE-2026-78661

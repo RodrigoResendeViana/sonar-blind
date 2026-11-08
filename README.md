@@ -49,7 +49,7 @@ sonar/
 ├── firmware/               Sonar Ponto e Sonar Bordo (PlatformIO + Wokwi)
 ├── infra/terraform/        bootstrap (bucket do state) e nuvem (VPC, EC2, IAM, OIDC, SSM, Budgets)
 ├── infra/compose/          docker-compose, Caddyfile, Mosquitto e o deploy.sh
-├── infra/monitoramento/    Prometheus, alertas no Telegram e Grafana (servidor local)
+├── infra/monitoramento/    Prometheus, alertas no Telegram e Grafana (rodam na EC2)
 ├── .github/workflows/      ci-cd.yml: Gitleaks, Semgrep, testes, Trivy, GHCR, deploy por SSM, ZAP
 └── docs/                   contratos, arquitetura, LGPD, custo, responsabilidade compartilhada
 ```
@@ -80,7 +80,7 @@ Desenvolvimento: `cd api && pip install -r requirements-dev.txt && pytest`;
 - **Sem segredo no Git:** o deploy gera o `.env` a partir do Parameter Store; o pipeline entra na
   AWS por OIDC, sem chave guardada; a EC2 não tem porta 22.
 - **Observabilidade:** a API expõe `/metrics` (tráfego, erros, latência, Olho Vivo, dispositivos);
-  o Grafana do servidor local mostra os sinais de ouro, e os alertas vão para o Telegram.
+  o Grafana em `/grafana` mostra os sinais de ouro, e os alertas vão para o Telegram.
 - Detalhes: [arquitetura](docs/arquitetura.md), [contratos](docs/contratos.md),
   [LGPD](docs/lgpd.md), [custo](docs/custo.md),
   [responsabilidade compartilhada](docs/responsabilidade-compartilhada.md) e

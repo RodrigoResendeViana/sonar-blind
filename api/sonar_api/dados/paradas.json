@@ -1,0 +1,14 @@
+[
+  {
+    "id": "demo",
+    "nome": "Ponto de demonstração (Itaquera)",
+    "codigo_sptrans": null,
+    "lat": -23.5424,
+    "lon": -46.4712,
+    "demo": true,
+    "linhas": [
+      {"codigo": "DEMO-10", "destino": "Terminal Exemplo"},
+      {"codigo": "DEMO-20", "destino": "Centro (exemplo)"}
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+[project]
+name = "sonar-camera"
+version = "0.1.0"
+description = "Serviço da câmera do Sonar Ponto: lê o letreiro e publica só o texto da linha"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]

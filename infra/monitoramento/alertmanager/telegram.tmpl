@@ -1,0 +1,3 @@
+{{ define "telegram.sonar" }}{{ if eq .Status "firing" }}🔴 <b>{{ .CommonLabels.alertname }}</b>{{ else }}✅ <b>{{ .CommonLabels.alertname }}</b> resolvido{{ end }}
+{{ range .Alerts }}• {{ .Annotations.resumo }}
+{{ end }}{{ end }}

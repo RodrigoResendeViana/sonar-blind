@@ -1,0 +1,17 @@
+route:
+  receiver: telegram
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/segredos/telegram_token
+        chat_id: __TELEGRAM_CHAT_ID__
+        parse_mode: HTML
+        message: '{{ template "telegram.sonar" . }}'
+
+templates:
+  - /etc/alertmanager/telegram.tmpl

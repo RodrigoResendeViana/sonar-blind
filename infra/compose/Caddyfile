@@ -1,0 +1,51 @@
+# Caddy: HTTPS automático (Let's Encrypt), cabeçalhos de segurança, PWA e proxy da API.
+# SONAR_SITE_ADDRESS: o domínio em produção (ex.: sonar.rodrigoviana.app.br)
+# ou http://localhost na sua máquina.
+{
+	admin off
+	# só Let's Encrypt: o Sonar Ponto e o Sonar Bordo confiam na raiz ISRG
+	cert_issuer acme
+}
+
+{$SONAR_SITE_ADDRESS:http://localhost} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "microphone=(self), geolocation=(self), screen-wake-lock=(self), camera=(), payment=(), usb=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	# teste de fumaça do pipeline
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	# Grafana (monitoramento): ele mesmo pede login
+	handle /grafana* {
+		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+		reverse_proxy grafana:3000
+	}
+
+	# API (o prefixo /api sai aqui; o uvicorn roda com --root-path /api)
+	handle_path /api/* {
+		# a página /api/docs (Swagger) carrega scripts de uma CDN
+		header /docs Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'"
+		reverse_proxy api:8000
+	}
+
+	# PWA
+	handle {
+		root * /srv
+		@imutavel path /assets/*
+		header @imutavel Cache-Control "public, max-age=31536000, immutable"
+		@mutavel not path /assets/*
+		header @mutavel Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
