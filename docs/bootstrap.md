@@ -32,7 +32,7 @@ unzip -o terraform_${TF}_linux_amd64.zip -d ~/bin
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
 export PATH=$HOME/bin:$PATH && terraform version
 
-cd ~ && git clone https://github.com/RodrigoResendeViana/sonar.git && cd sonar
+cd ~ && git clone https://github.com/RodrigoResendeViana/sonar-blind.git sonar && cd sonar
 ```
 
 ### 3.1 Bucket do state (uma vez só)

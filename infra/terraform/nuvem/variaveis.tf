@@ -13,7 +13,7 @@ variable "dominio" {
 variable "repositorio_github" {
   description = "dono/repositório que pode publicar na EC2 pelo OIDC (só a branch main)."
   type        = string
-  default     = "RodrigoResendeViana/sonar"
+  default     = "RodrigoResendeViana/sonar-blind"
 }
 
 variable "tipo_instancia" {
