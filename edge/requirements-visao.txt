@@ -1,0 +1,5 @@
+# Só no notebook do ponto, para usar a webcam com o modelo da equipe de Visão.
+-r requirements.txt
+opencv-python-headless
+ultralytics
+easyocr
