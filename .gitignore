@@ -33,3 +33,8 @@ firmware/.pio/
 firmware/.vscode/
 
 .DS_Store
+
+# Visão: dataset e execuções de treino ficam fora do Git
+visao/dados/*/
+visao/execucoes/
+*.pt
