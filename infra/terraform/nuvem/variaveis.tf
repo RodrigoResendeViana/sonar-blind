@@ -16,6 +16,12 @@ variable "repositorio_github" {
   default     = "RodrigoResendeViana/sonar-blind"
 }
 
+variable "repositorio_github_ids" {
+  description = "O mesmo repositório no formato com IDs do sub do OIDC (dono@id/repo@id). Vazio desliga."
+  type        = string
+  default     = "RodrigoResendeViana@127115158/sonar-blind@1450728497"
+}
+
 variable "tipo_instancia" {
   description = "8 GiB por causa do LLM local. Contas no plano gratuito só aceitam alguns tipos; m7i-flex.large é um deles."
   type        = string

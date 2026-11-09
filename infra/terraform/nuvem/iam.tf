@@ -1,10 +1,15 @@
 data "aws_caller_identity" "atual" {}
 
+# subs_github: o GitHub pode mandar o sub do OIDC no formato clássico (dono/repo) ou com os
+# IDs imutáveis (dono@id/repo@id), que impedem um repositório recriado com o mesmo nome.
 locals {
   conta           = data.aws_caller_identity.atual.account_id
   arn_parametros  = "arn:aws:ssm:${var.regiao}:${local.conta}:parameter/sonar"
   arn_documento   = "arn:aws:ssm:${var.regiao}::document/AWS-RunShellScript"
-  sub_github_main = "repo:${var.repositorio_github}:ref:refs/heads/main"
+  subs_github     = compact([
+    "repo:${var.repositorio_github}:ref:refs/heads/main",
+    var.repositorio_github_ids == "" ? "" : "repo:${var.repositorio_github_ids}:ref:refs/heads/main",
+  ])
 }
 
 # ---------------------------------------------------------------- papel da EC2
@@ -83,7 +88,7 @@ data "aws_iam_policy_document" "github_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [local.sub_github_main]
+      values   = local.subs_github
     }
   }
 }
