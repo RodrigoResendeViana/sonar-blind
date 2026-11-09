@@ -134,7 +134,7 @@ services:
       TELEGRAM_CHAT_ID: ${SONAR_TELEGRAM_CHAT_ID:-}
     volumes:
       - ../monitoramento/alertmanager:/etc/alertmanager:ro
-      - ${SONAR_SEGREDOS_DIR:-./local}/alertmanager:/etc/alertmanager/segredos:ro
+      - ${SONAR_SEGREDOS_DIR:-./local}/alertmanager:/run/segredos:ro
       - alertmanager_dados:/alertmanager
     tmpfs: [/tmp]
     cap_drop: [ALL]
