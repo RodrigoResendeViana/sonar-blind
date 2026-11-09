@@ -1,0 +1,7 @@
+# Dataset do letreiro (formato Ultralytics). As imagens ficam fora do Git.
+path: dados
+train: treino/imagens
+val: validacao/imagens
+test: teste/imagens
+names:
+  0: letreiro

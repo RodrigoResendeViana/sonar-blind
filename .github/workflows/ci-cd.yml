@@ -121,6 +121,34 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: pytest
 
+  ia:
+    name: Agente de IA (pytest)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ia
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+  rpa:
+    name: Robô de RPA (pytest)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: rpa
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
   firmware:
     name: Firmware (PlatformIO)
     runs-on: ubuntu-24.04
@@ -169,7 +197,7 @@ jobs:
 
   imagens:
     name: Imagem ${{ matrix.servico }} (build, Trivy e GHCR)
-    needs: [segredos, sast, api, app, edge, iac]
+    needs: [segredos, sast, api, app, edge, ia, rpa, iac]
     runs-on: ubuntu-24.04
     permissions:
       contents: read

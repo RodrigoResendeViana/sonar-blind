@@ -46,6 +46,9 @@ sonar/
 ├── app/                    PWA (React + Vite + TypeScript), servido pelo Caddy
 ├── api/                    API (FastAPI): esperas, SSE, MQTT, Olho Vivo, IA, ocorrências, métricas
 ├── edge/                   serviço da câmera do ponto (YOLO + OCR; só publica texto)
+├── ia/                     agente de GenAI (POST /perguntar), esqueleto que cumpre o contrato
+├── rpa/                    robô de RPA das ocorrências (lê e devolve pela API)
+├── visao/                  treino do YOLO do letreiro (dataset fora do Git)
 ├── firmware/               Sonar Ponto e Sonar Bordo (PlatformIO + Wokwi)
 ├── infra/terraform/        bootstrap (bucket do state) e nuvem (VPC, EC2, IAM, OIDC, SSM, Budgets)
 ├── infra/compose/          docker-compose, Caddyfile, Mosquitto e o deploy.sh
@@ -53,6 +56,13 @@ sonar/
 ├── .github/workflows/      ci-cd.yml: Gitleaks, Semgrep, testes, Trivy, GHCR, deploy por SSM, ZAP
 └── docs/                   contratos, arquitetura, LGPD, custo, responsabilidade compartilhada
 ```
+
+## Equipes e como contribuir
+
+Cada matéria tem sua pasta e um contrato em [`docs/contratos.md`](docs/contratos.md):
+GenAI em `ia/`, Visão em `visao/` + `edge/`, RPA em `rpa/`, Maker Lab em `firmware/`,
+Secure DevOps em `infra/` e `.github/`. O passo a passo para abrir PR está em
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Rodar na sua máquina
 
