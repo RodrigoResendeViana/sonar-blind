@@ -2,7 +2,7 @@
 # Imagem "web": o PWA compilado servido pelo Caddy, que também faz o HTTPS e o proxy da API.
 # A configuração (Caddyfile) vem do repositório, montada pelo docker-compose.
 
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
