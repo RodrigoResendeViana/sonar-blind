@@ -46,10 +46,10 @@ sonar/
 ├── app/                    PWA (React + Vite + TypeScript), servido pelo Caddy
 ├── api/                    API (FastAPI): esperas, SSE, MQTT, Olho Vivo, IA, ocorrências, métricas
 ├── edge/                   serviço da câmera do ponto (YOLO + OCR; só publica texto)
-├── ia/                     agente de GenAI (POST /perguntar), esqueleto que cumpre o contrato
-├── rpa/                    robô de RPA das ocorrências (lê e devolve pela API)
+├── ia/                     agente de GenAI: LLM local (Ollama) + ferramentas que consultam o Olho Vivo
+├── rpa/                    RPA: fluxo do n8n que transforma ocorrências em reclamação com protocolo
 ├── visao/                  treino do YOLO do letreiro (dataset fora do Git)
-├── firmware/               Sonar Ponto e Sonar Bordo (PlatformIO + Wokwi)
+├── firmware/               Sonar Ponto, Sonar Bordo e Sonar Braço pan-tilt (PlatformIO + Wokwi)
 ├── infra/terraform/        bootstrap (bucket do state) e nuvem (VPC, EC2, IAM, OIDC, SSM, Budgets)
 ├── infra/compose/          docker-compose, Caddyfile, Mosquitto e o deploy.sh
 ├── infra/monitoramento/    Prometheus, alertas no Telegram e Grafana (rodam na EC2)
@@ -62,7 +62,8 @@ sonar/
 Cada matéria tem sua pasta e um contrato em [`docs/contratos.md`](docs/contratos.md):
 GenAI em `ia/`, Visão em `visao/` + `edge/`, RPA em `rpa/`, Maker Lab em `firmware/`,
 Secure DevOps em `infra/` e `.github/`. O passo a passo para abrir PR está em
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+[`CONTRIBUTING.md`](CONTRIBUTING.md), e o que falta fazer em cada matéria está em
+[`docs/proximos-passos.md`](docs/proximos-passos.md).
 
 ## Rodar na sua máquina
 

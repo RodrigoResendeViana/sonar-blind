@@ -4,10 +4,10 @@
 
 | Matéria | Pasta | Contrato |
 |---|---|---|
-| IA generativa | `ia/` | `POST /perguntar` em `docs/contratos.md` |
-| Visão computacional | `visao/` e `edge/` | leitura publicada em `sonar/parada/{id}/visao` |
-| RPA | `rpa/` | `GET/PATCH /api/ocorrencias` |
-| Maker Lab | `firmware/` | tópicos MQTT em `docs/contratos.md` |
+| IA generativa | `ia/` | `POST /perguntar` e `GET /api/linhas` em `docs/contratos.md` |
+| Visão computacional | `visao/` e `edge/` | `sonar/parada/{id}/visao` (linha lida) e `.../mira` (posição) |
+| RPA | `rpa/` (fluxo do n8n em `rpa/n8n/`) | `GET/PATCH /api/ocorrencias` |
+| Maker Lab | `firmware/` (Sonar Braço em `src/braco/`) | tópico `sonar/parada/{id}/mira` em `docs/contratos.md` |
 | Secure DevOps | `infra/`, `.github/` | pipeline e deploy |
 | App e API | `app/`, `api/` | `docs/openapi.json` |
 

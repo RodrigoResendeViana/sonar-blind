@@ -112,7 +112,7 @@ Re-run all jobs.
 As senhas MQTT de cada dispositivo:
 
 ```bash
-for u in ponto-demo camera-demo bordo-90001; do
+for u in ponto-demo camera-demo braco-demo bordo-90001; do
   echo "$u: $(aws ssm get-parameter --name /sonar/mqtt/usuarios/$u --with-decryption --query Parameter.Value --output text)"
 done
 ```

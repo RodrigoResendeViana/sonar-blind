@@ -12,6 +12,7 @@ em `https://sonar.rodrigoviana.app.br/api/docs`.
 | `GET /readyz` | deploy | banco, Olho Vivo, MQTT e IA configurados |
 | `GET /paradas`, `GET /paradas/proxima?lat=&lon=` | app | paradas com Sonar Ponto; a localização não é gravada |
 | `GET /paradas/{id}/previsao` | app, IA | previsão do Olho Vivo (cache de 30 s) ou dados de demonstração |
+| `GET /linhas?termo=` | agente de IA | busca de linha por número ou destino (Olho Vivo) |
 | `POST /ia/perguntar` | app | pergunta por voz (contrato abaixo) |
 | `POST /esperas` | app ("Cheguei") | abre a espera e liga o Sonar Ponto |
 | `GET /esperas/{id}` | app | estado da espera |
@@ -73,7 +74,7 @@ recebe só o que perdeu.
 ## MQTT (Mosquitto na EC2, TLS na porta 8883)
 
 Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<parada>`,
-`bordo-<prefixo>`) e a ACL só deixa cada um ler e escrever nos seus tópicos.
+`braco-<parada>`, `bordo-<prefixo>`) e a ACL só deixa cada um ler e escrever nos seus tópicos.
 
 | Tópico | De → para | Conteúdo |
 |---|---|---|
@@ -82,12 +83,20 @@ Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<para
 | `sonar/parada/{id}/evento` | Sonar Ponto → API | `{"espera_id","linha_lida","confianca","passou_em","tempo_parado_s","parou","camera_ok"}` |
 | `sonar/parada/{id}/status` | Sonar Ponto → API (retido, 30 s) | `{"online","estado","rssi","uptime_s","fila","camera_ok","versao"}`; a queda vira `{"online":false}` (testamento MQTT) |
 | `sonar/parada/{id}/camera/status` | câmera → API e Ponto (retido) | `{"online","ativa"}` |
+| `sonar/parada/{id}/mira` | câmera → braço (até ~7/s) | `{"alvo":true,"x":0.42,"y":0.5,"linha":"DEMO-10"}` (centro do letreiro, 0 a 1) ou `{"alvo":false}` quando o letreiro some por 1 s |
+| `sonar/parada/{id}/braco/status` | braço → API (retido) | `{"online","modo","pan","tilt"}` |
 | `sonar/onibus/{prefixo}/alerta` | API → Sonar Bordo | `{"espera_id","parada_nome","paradas_ate","linha"}` |
 | `sonar/onibus/{prefixo}/ciente` | Sonar Bordo → API | `{"espera_id","horario"}` |
 | `sonar/onibus/{prefixo}/status` | Sonar Bordo → API (retido) | sinal de vida |
 
 O aviso vai para o prefixo do ônibus que o Olho Vivo prevê chegar primeiro, quando faltam até
 4 minutos (cerca de 2 paradas; `paradas_ate` é essa estimativa).
+
+## Linhas (API ↔ agente de IA)
+
+`GET /api/linhas?termo=lapa` devolve `{"fonte": "olhovivo" | "demonstracao", "linhas": [{"codigo", "origem",
+"destino", "sentido", "codigo_interno", "circular"}]}` (Olho Vivo `/Linha/Buscar`, um item por sentido).
+Sem token do Olho Vivo, busca nas linhas cadastradas das paradas.
 
 ## Ocorrências (API ↔ robô de RPA)
 
