@@ -46,13 +46,13 @@ variable "limite_orcamento_usd" {
 }
 
 variable "usuarios_mqtt" {
-  description = "Dispositivos com senha própria no Mosquitto: ponto-<parada>, camera-<parada>, bordo-<prefixo>."
+  description = "Dispositivos com senha própria no Mosquitto: ponto-<parada>, camera-<parada>, braco-<parada>, bordo-<prefixo>."
   type        = list(string)
-  default     = ["ponto-demo", "camera-demo", "bordo-90001"]
+  default     = ["ponto-demo", "camera-demo", "braco-demo", "bordo-90001"]
 
   validation {
-    condition     = alltrue([for usuario in var.usuarios_mqtt : can(regex("^(ponto|camera|bordo)-[A-Za-z0-9-]{1,40}$", usuario))])
-    error_message = "Cada usuário deve ser ponto-<parada>, camera-<parada> ou bordo-<prefixo>."
+    condition     = alltrue([for usuario in var.usuarios_mqtt : can(regex("^(ponto|camera|braco|bordo)-[A-Za-z0-9-]{1,40}$", usuario))])
+    error_message = "Cada usuário deve ser ponto-<parada>, camera-<parada>, braco-<parada> ou bordo-<prefixo>."
   }
 }
 

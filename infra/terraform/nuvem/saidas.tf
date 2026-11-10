@@ -26,3 +26,8 @@ output "senha_do_grafana" {
   description = "Comando que mostra a senha do Grafana (usuário admin, em https://<domínio>/grafana)."
   value       = "aws ssm get-parameter --name /sonar/grafana/senha --with-decryption --query Parameter.Value --output text"
 }
+
+output "abrir_o_n8n" {
+  description = "O n8n (RPA) não fica exposto na internet: abra um túnel pelo SSM e acesse http://localhost:5678."
+  value       = "aws ssm start-session --target ${aws_instance.sonar.id} --document-name AWS-StartPortForwardingSession --parameters portNumber=5678,localPortNumber=5678"
+}

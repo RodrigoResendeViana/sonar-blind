@@ -14,3 +14,8 @@ services:
   mqtt:
     ports:
       - "127.0.0.1:1883:1883"
+
+  # com COMPOSE_PROFILES=ia e SONAR_IA_URL=http://ia:8100 no .env
+  ia:
+    build: ../../ia
+    image: sonar-ia:local
