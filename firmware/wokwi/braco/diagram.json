@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "author": "Sonar - FIAP Global Solution 2026.2",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-servo", "id": "pan", "top": -120, "left": 160, "attrs": { "label": "pan" } },
+    { "type": "wokwi-servo", "id": "tilt", "top": 40, "left": 200, "attrs": { "label": "tilt" } },
+    { "type": "wokwi-potentiometer", "id": "pot", "top": -110, "left": -150, "attrs": { "label": "manual" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "pan:V+", "esp:5V", "red", [] ],
+    [ "pan:GND", "esp:GND.1", "black", [] ],
+    [ "pan:PWM", "esp:18", "orange", [] ],
+    [ "tilt:V+", "esp:5V", "red", [] ],
+    [ "tilt:GND", "esp:GND.2", "black", [] ],
+    [ "tilt:PWM", "esp:19", "orange", [] ],
+    [ "pot:VCC", "esp:3V3", "red", [] ],
+    [ "pot:GND", "esp:GND.1", "black", [] ],
+    [ "pot:SIG", "esp:34", "green", [] ]
+  ],
+  "dependencies": {}
+}
