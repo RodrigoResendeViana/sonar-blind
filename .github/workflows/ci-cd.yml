@@ -165,10 +165,10 @@ jobs:
           path: ~/.platformio
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
       - run: pip install platformio
-      - name: Compilar o Sonar Ponto e o Sonar Bordo
+      - name: Compilar o Sonar Ponto, o Sonar Bordo e o Sonar Braço
         run: |
           cp include/secrets.example.h include/secrets.h
-          pio run -e ponto -e bordo
+          pio run -e ponto -e bordo -e braco
 
   iac:
     name: IaC (Terraform e Trivy)
@@ -210,6 +210,8 @@ jobs:
             contexto: api
           - servico: web
             contexto: app
+          - servico: ia
+            contexto: ia
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
