@@ -63,3 +63,54 @@ def test_so_processa_com_espera_ativa_e_publica_so_texto():
     assert retido is False
     servico.ao_comando({"acao": "desativar"})
     assert servico.passo() is None
+
+
+def _servico(leituras, relogio, **extra):
+    publicados = []
+    servico = ServicoCamera(
+        "demo", DetectorFixo(leituras), lambda t, d, r: publicados.append((t, d)), ["DEMO-10", "DEMO-20"],
+        relogio=relogio, **extra,
+    )
+    return servico, publicados
+
+
+def _miras(publicados):
+    return [dados for topico, dados in publicados if topico.endswith("/mira")]
+
+
+def test_mira_segue_o_onibus_esperado():
+    relogio = Relogio()
+    leituras = [Leitura("DEMO-20", 0.99, 0.1, 0.5), Leitura("DEMO-10", 0.7, 0.8, 0.4)]
+    servico, publicados = _servico(leituras, relogio)
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-10"]})
+    servico.passo()
+    assert _miras(publicados) == [{"alvo": True, "x": 0.8, "y": 0.4, "linha": "DEMO-10"}]
+
+
+def test_mira_limita_a_frequencia_e_avisa_quando_perde_o_alvo():
+    relogio = Relogio()
+    detector_leituras = [Leitura("DEMO-10", 0.9, 0.5, 0.5)]
+    servico, publicados = _servico(detector_leituras, relogio, mirar_sempre=True)
+    servico.passo()
+    relogio.agora = 0.05
+    servico.passo()  # cedo demais: não publica de novo
+    assert len(_miras(publicados)) == 1
+    servico.detector.leituras = []
+    relogio.agora = 0.5
+    servico.passo()  # sumiu há pouco: ainda não desiste
+    relogio.agora = 1.6
+    servico.passo()
+    assert _miras(publicados)[-1] == {"alvo": False}
+
+
+def test_sem_espera_e_sem_mirar_sempre_nao_publica_nada():
+    servico, publicados = _servico([Leitura("DEMO-10", 0.9, 0.5, 0.5)], Relogio())
+    servico.passo()
+    assert publicados == []
+
+
+def test_mirar_sempre_nao_confirma_linha_sem_espera():
+    servico, publicados = _servico([Leitura("DEMO-10", 0.9, 0.5, 0.5)], Relogio(), mirar_sempre=True)
+    for _ in range(5):
+        servico.passo()
+    assert not [d for t, d in publicados if t.endswith("/visao")]
