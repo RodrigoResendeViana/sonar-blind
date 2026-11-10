@@ -1,0 +1,186 @@
+{
+  "id": "SonarOcorrencias",
+  "name": "Sonar - ocorrências de ônibus que não parou",
+  "active": false,
+  "nodes": [
+    {
+      "id": "a1",
+      "name": "A cada 15 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a2",
+      "name": "Rodar agora (demo)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a3",
+      "name": "Buscar ocorrências pendentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        100
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SONAR_API_URL }}/ocorrencias",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "pendente"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SONAR_TOKEN_SERVICO }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a4",
+      "name": "Conferir e registrar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Confere cada ocorrência e registra a reclamação no canal oficial.\n// MVP: o registro é SIMULADO (gera um protocolo SIM-...). Para o canal real, troque este nó por\n// um \"Send Email\" para a ouvidoria ou um HTTP Request para o formulário da SPTrans.\nconst saida = [];\nfor (const item of $input.all()) {\n  const oc = item.json;\n  const ev = oc.evidencias || {};\n  const passagem = ev.passagem || {};\n  const aviso = ev.aviso || {};\n  const temLinha = Boolean(oc.linha);\n  // evidência: a câmera leu o letreiro com confiança, ou o motorista confirmou o aviso no bipper\n  const temEvidencia = (passagem.camera_ok === true && (passagem.confianca || 0) >= 0.6) || Boolean(aviso.ciente_em);\n  if (!oc.consentimento || !temLinha) {\n    saida.push({ json: { id: oc.id, status: 'inconclusiva', protocolo: null,\n      mensagem: 'sem consentimento ou sem linha identificada' } });\n    continue;\n  }\n  if (!temEvidencia) {\n    saida.push({ json: { id: oc.id, status: 'inconclusiva', protocolo: null,\n      mensagem: 'evidências fracas (sem leitura da câmera nem ciente do motorista)' } });\n    continue;\n  }\n  const protocolo = 'SIM-' + Math.random().toString(36).slice(2, 10).toUpperCase();\n  const texto = `Ônibus da linha ${oc.linha}${oc.prefixo ? ' (prefixo ' + oc.prefixo + ')' : ''} ` +\n    `não parou para passageiro com deficiência visual no ponto ${(ev.parada && ev.parada.nome) || oc.parada_id} em ${passagem.em || oc.criado_em}. ` +\n    `Registro automático do Sonar.`;\n  saida.push({ json: { id: oc.id, status: 'enviada', protocolo, mensagem: texto } });\n}\nreturn saida;"
+      }
+    },
+    {
+      "id": "a5",
+      "name": "Devolver status para a API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        100
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SONAR_API_URL }}/ocorrencias/{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SONAR_TOKEN_SERVICO }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: $json.status, protocolo: $json.protocolo, mensagem: $json.mensagem }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a6",
+      "name": "Resumo da rodada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        100
+      ],
+      "parameters": {
+        "jsCode": "const itens = $input.all().map(i => i.json);\nconst enviadas = itens.filter(i => i.status === 'enviada').length;\nreturn [{ json: { processadas: itens.length, enviadas, inconclusivas: itens.length - enviadas,\n  em: new Date().toISOString() } }];"
+      }
+    }
+  ],
+  "connections": {
+    "A cada 15 minutos": {
+      "main": [
+        [
+          {
+            "node": "Buscar ocorrências pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rodar agora (demo)": {
+      "main": [
+        [
+          {
+            "node": "Buscar ocorrências pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar ocorrências pendentes": {
+      "main": [
+        [
+          {
+            "node": "Conferir e registrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir e registrar": {
+      "main": [
+        [
+          {
+            "node": "Devolver status para a API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Devolver status para a API": {
+      "main": [
+        [
+          {
+            "node": "Resumo da rodada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {}
+}
