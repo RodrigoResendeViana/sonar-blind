@@ -6,5 +6,5 @@ email_alertas = "seu-email@exemplo.com"
 # repositorio_github   = "RodrigoResendeViana/sonar-blind"
 # tipo_instancia       = "m7i-flex.large"
 # limite_orcamento_usd = 40
-# usuarios_mqtt        = ["ponto-demo", "camera-demo", "bordo-90001"]
+# usuarios_mqtt        = ["ponto-demo", "camera-demo", "braco-demo", "bordo-90001"]
 # perfis_compose       = "ia"

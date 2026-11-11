@@ -22,6 +22,12 @@ resource "random_password" "grafana" {
   special = false
 }
 
+# chave com que o n8n (RPA) cifra as credenciais que ele guarda (ex.: o bot do Telegram)
+resource "random_password" "n8n" {
+  length  = 40
+  special = false
+}
+
 locals {
   usuarios_mqtt = toset(concat(["sonar-api"], var.usuarios_mqtt))
   segredos = {
@@ -29,6 +35,7 @@ locals {
     "/sonar/api/token-servico" = random_password.token_servico.result
     "/sonar/api/sal-hash"      = random_password.sal_hash.result
     "/sonar/grafana/senha"     = random_password.grafana.result
+    "/sonar/n8n/chave"         = random_password.n8n.result
   }
 }
 

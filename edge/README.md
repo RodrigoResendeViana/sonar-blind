@@ -10,6 +10,17 @@ depois de 3 quadros seguidos iguais e publica só o texto em `sonar/parada/{id}/
 
 Nenhuma imagem sai do notebook. O Sonar Ponto (ESP32) junta essa leitura com o ultrassom e decide.
 
+Em paralelo, a cada quadro com letreiro, publica a posição dele em `sonar/parada/{id}/mira`
+(até ~7 vezes por segundo) para o **Sonar Braço** (Maker Lab) girar a câmera e seguir o ônibus:
+
+```json
+{"alvo": true, "x": 0.42, "y": 0.5, "linha": "DEMO-10"}
+```
+
+Prioridade do alvo: o ônibus esperado, depois qualquer linha conhecida, depois qualquer letreiro.
+Quando o letreiro some por 1 s, publica `{"alvo": false}`. Com `--mirar-sempre`, a mira funciona
+mesmo sem espera aberta (para a demonstração do braço).
+
 ## Rodar
 
 ```bash
@@ -22,6 +33,7 @@ export SONAR_MQTT_USUARIO=camera-demo
 export SONAR_MQTT_SENHA="$(aws ssm get-parameter --name /sonar/mqtt/usuarios/camera-demo --with-decryption --query Parameter.Value --output text)"
 
 python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20                 # digite a linha no terminal
+python -m sonar_camera --parada demo --linhas DEMO-10 --mirar-sempre           # DEMO-10@0.2 = letreiro à esquerda
 python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 --modo webcam --modelo modelos/letreiro.pt
 ```
 

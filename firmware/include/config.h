@@ -32,6 +32,28 @@
 #define SONAR_OLED 1   // 0 se não houver display SSD1306
 #define ALERTA_MAX_MS 120000UL
 
+// ---------------------------------------------------------------- Sonar Braço (Maker Lab)
+// Servos SG90/MG90S: sinal nos pinos abaixo, alimentação por fonte de 5 V EXTERNA (GND comum).
+#define PINO_SERVO_PAN 18
+#define PINO_SERVO_TILT 19
+#define PINO_POT 34            // potenciômetro para o modo manual (só entrada, ADC1)
+#define USAR_POT 1             // 0 se não houver potenciômetro (pino solto gera ruído)
+#define CAMERA_NO_BRACO 1      // 1: webcam presa na cabeça (malha fechada); 0: câmera fixa ao lado
+#define PAN_MIN 20.0f
+#define PAN_MAX 160.0f
+#define PAN_CENTRO 90
+#define TILT_MIN 60.0f
+#define TILT_MAX 120.0f
+#define TILT_CENTRO 90
+#define GANHO_PAN 40.0f         // graus de correção para o letreiro na borda do quadro
+#define GANHO_TILT 20.0f
+#define ZONA_MORTA 0.06f        // perto do meio, não mexe (evita tremer)
+#define VELOCIDADE_MAX 3.0f     // graus por passo
+#define VELOCIDADE_VARREDURA 1.0f
+#define PASSO_MS 20
+#define PERDEU_ALVO_MS 3000
+#define MANUAL_MS 10000UL
+
 // ---------------------------------------------------------------- comum
 #define STATUS_MS 30000UL  // sinal de vida (a API marca offline depois de 90 s sem ele)
 #define TAMANHO_FILA 20    // eventos guardados enquanto o Wi-Fi está fora

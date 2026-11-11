@@ -23,7 +23,7 @@ from .metricas import HTTP_EM_ANDAMENTO, HTTP_LATENCIA, HTTP_REQUISICOES
 from .mqtt_ponte import PonteMqtt, Publicador
 from .olhovivo import ClienteOlhoVivo, OlhoVivoIndisponivel
 from .paradas import CadastroParadas
-from .rotas import esperas, ia, ocorrencias, painel, paradas, saude, simulador
+from .rotas import esperas, ia, linhas, ocorrencias, painel, paradas, saude, simulador
 from .servico import Conflito, NaoEncontrado, Sonar
 
 log = logging.getLogger("sonar")
@@ -155,7 +155,7 @@ def create_app(
     async def _valor_invalido(_request: Request, erro: ValueError):
         return JSONResponse(status_code=422, content={"detail": str(erro)})
 
-    for modulo in (saude, paradas, esperas, ia, painel, ocorrencias):
+    for modulo in (saude, paradas, linhas, esperas, ia, painel, ocorrencias):
         app.include_router(modulo.router)
     if cfg.simuladores:
         app.include_router(simulador.router)

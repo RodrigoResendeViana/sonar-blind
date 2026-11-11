@@ -26,6 +26,9 @@ def main() -> None:
     argumentos.add_argument("--modo", choices=["teclado", "webcam"], default="teclado")
     argumentos.add_argument("--camera", type=int, default=0)
     argumentos.add_argument("--modelo", default="modelos/letreiro.pt")
+    argumentos.add_argument(
+        "--mirar-sempre", action="store_true", help="publica a posição do letreiro mesmo sem espera (demo do braço)"
+    )
     opcoes = argumentos.parse_args()
 
     detector = DetectorWebcam(opcoes.camera, opcoes.modelo) if opcoes.modo == "webcam" else DetectorTeclado()
@@ -39,7 +42,7 @@ def main() -> None:
         cliente.publish(topico, json.dumps(dados), qos=1, retain=retido)
 
     linhas = [linha.strip() for linha in opcoes.linhas.split(",") if linha.strip()]
-    servico = ServicoCamera(opcoes.parada, detector, publicar, linhas)
+    servico = ServicoCamera(opcoes.parada, detector, publicar, linhas, mirar_sempre=opcoes.mirar_sempre)
 
     cliente.username_pw_set(os.environ.get("SONAR_MQTT_USUARIO", f"camera-{opcoes.parada}"), os.environ.get("SONAR_MQTT_SENHA"))
     if os.environ.get("SONAR_MQTT_TLS", "1") == "1":
@@ -66,7 +69,7 @@ def main() -> None:
     cliente.connect_async(os.environ.get("SONAR_MQTT_HOST", "localhost"), int(os.environ.get("SONAR_MQTT_PORTA", "8883")))
     cliente.loop_start()
     if opcoes.modo == "teclado":
-        print("Digite a linha que a câmera estaria lendo (ex.: DEMO-10) e tecle Enter.")
+        print("Digite a linha que a câmera estaria lendo (ex.: DEMO-10, ou DEMO-10@0.2 para a esquerda).")
     try:
         servico.rodar()
     except KeyboardInterrupt:

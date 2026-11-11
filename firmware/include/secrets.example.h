@@ -21,3 +21,7 @@
 #define SONAR_PREFIXO "90001"
 #define MQTT_USUARIO_BORDO "bordo-90001"
 #define MQTT_SENHA_BORDO "cole-a-senha-do-parameter-store"
+
+// Sonar Braço (Maker Lab): mesma parada do Sonar Ponto
+#define MQTT_USUARIO_BRACO "braco-demo"
+#define MQTT_SENHA_BRACO "cole-a-senha-do-parameter-store"

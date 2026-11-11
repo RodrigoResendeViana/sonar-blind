@@ -1,11 +1,12 @@
-# Firmware: Sonar Ponto e Sonar Bordo
+# Firmware: Sonar Ponto, Sonar Bordo e Sonar Braço
 
-Dois ESP32 com framework Arduino, compilados pelo PlatformIO e testáveis no Wokwi antes da montagem.
+Três ESP32 com framework Arduino, compilados pelo PlatformIO e testáveis no Wokwi antes da montagem.
 
 | Placa | O que faz |
 |---|---|
 | **Sonar Ponto** | Junta a leitura do letreiro (câmera, por MQTT) com o ultrassom. Pisca o LED para o motorista enquanto há espera, apita para o usuário achar o poste e publica cada passagem com o tempo parado. |
 | **Sonar Bordo** | O bipper na cabine: toca, acende o LED, mostra a parada no OLED e publica o "ciente" quando o motorista aperta o botão. |
+| **Sonar Braço** (Maker Lab) | Cabeça pan-tilt com 2 servos que segue o letreiro: recebe do serviço da câmera a posição do letreiro no quadro e gira para mantê-lo no centro. Varre de um lado para o outro enquanto há espera e nenhum letreiro à vista. |
 
 ## Ligações
 
@@ -19,8 +20,39 @@ Dois ESP32 com framework Arduino, compilados pelo PlatformIO e testáveis no Wok
 | Bordo | LED | GPIO 2 (LED da placa) |
 | Bordo | Botão "ciente" para o GND (pull-up interno) | GPIO 33 |
 | Bordo | OLED SSD1306 SDA / SCL | GPIO 21 / 22 |
+| Braço | Servo pan (sinal) | GPIO 18 |
+| Braço | Servo tilt (sinal) | GPIO 19 |
+| Braço | Potenciômetro 10 kΩ (cursor; pontas em 3V3 e GND) | GPIO 34 |
+| Braço | Servos: V+ na **fonte de 5 V externa** (2 A), GND da fonte ligado ao GND do ESP32 | — |
 
 O HC-SR04 vai no 5 V da placa; a versão HC-SR04P funciona em 3,3 V e dispensa o divisor.
+
+Não alimente os servos pelo 5 V do ESP32: o pico de corrente reinicia a placa.
+
+## Sonar Braço (Maker Lab)
+
+Material: ESP32 DevKit, 2 servos SG90 ou MG90S, suporte pan-tilt, fonte 5 V / 2 A, potenciômetro
+10 kΩ (opcional) e uma webcam USB presa na cabeça, ligada ao notebook.
+
+```
+webcam ──USB──▶ notebook: YOLO acha o letreiro ──MQTT sonar/parada/demo/mira {x, y}──▶ ESP32 ──PWM──▶ servos
+```
+
+O ESP32 não roda visão computacional: o notebook faz o YOLO + OCR (`edge/`) e manda só a posição.
+Com `CAMERA_NO_BRACO 1` (padrão), a câmera gira junto e o braço corrige até o letreiro ficar no
+meio do quadro (controle proporcional com zona morta e velocidade limitada). Com `0`, a câmera fica
+parada e o braço só aponta para onde o letreiro está. Ganhos e limites ficam em `include/config.h`.
+
+```
+REPOUSO ──cmd "ativar"──▶ PROCURANDO (varre de 20° a 160°)
+PROCURANDO/REPOUSO ──mira com alvo──▶ SEGUINDO
+SEGUINDO ──{"alvo":false} ou 3 s sem mira──▶ PROCURANDO (com espera) ou REPOUSO
+qualquer ──girou o potenciômetro──▶ MANUAL por 10 s
+```
+
+Testar sem câmera: `python -m sonar_camera --parada demo --linhas DEMO-10 --mirar-sempre` e digite
+`DEMO-10@0.1`, `DEMO-10@0.9`... para mover o letreiro "virtual" da esquerda para a direita.
+No Wokwi (`pio run -e braco_wokwi`, abra `wokwi/braco/diagram.json`), gire o potenciômetro.
 
 ## Máquina de estados do Sonar Ponto
 
@@ -46,6 +78,8 @@ O contrato completo está em [`docs/contratos.md`](../docs/contratos.md).
 | `sonar/parada/{id}/visao` | serviço da câmera | `{linha_lida, confianca, passou_em}` |
 | `sonar/parada/{id}/evento` | Sonar Ponto | `{espera_id, linha_lida, confianca, passou_em, tempo_parado_s, parou, camera_ok}` |
 | `sonar/parada/{id}/status` | Sonar Ponto (retido, a cada 30 s) | `{online, estado, rssi, uptime_s, fila, camera_ok}`; se a conexão cair, o broker publica `{online:false}` |
+| `sonar/parada/{id}/mira` | serviço da câmera (até ~7/s) | `{alvo, x, y, linha}` ou `{alvo:false}` |
+| `sonar/parada/{id}/braco/status` | Sonar Braço (retido) | `{online, modo, pan, tilt, espera}` |
 | `sonar/onibus/{prefixo}/alerta` | API | `{espera_id, parada_nome, paradas_ate, linha}` |
 | `sonar/onibus/{prefixo}/ciente` | Sonar Bordo | `{espera_id, horario}` |
 | `sonar/onibus/{prefixo}/status` | Sonar Bordo (retido) | sinal de vida |

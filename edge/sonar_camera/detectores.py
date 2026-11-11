@@ -16,6 +16,9 @@ from typing import Protocol
 class Leitura:
     texto: str
     confianca: float
+    # centro do letreiro no quadro, de 0 a 1 (0 = esquerda/topo). Vai para o braço do Maker Lab.
+    x: float | None = None
+    y: float | None = None
 
 
 class Detector(Protocol):
@@ -24,7 +27,10 @@ class Detector(Protocol):
 
 
 class DetectorTeclado:
-    """Cada linha digitada vira uma leitura repetida N vezes, para passar pela votação."""
+    """Cada linha digitada vira uma leitura repetida N vezes, para passar pela votação.
+
+    "DEMO-10@0.2" simula o letreiro à esquerda do quadro (x = 0,2), para testar o braço sem câmera.
+    """
 
     def __init__(self, quadros: int = 3, entrada=None):
         self._fila: queue.Queue[str] = queue.Queue()
@@ -44,7 +50,12 @@ class DetectorTeclado:
                 texto = self._fila.get_nowait()
             except queue.Empty:
                 return []
-            self._pendentes = [Leitura(texto, 0.95)] * self._quadros
+            texto, _, posicao = texto.partition("@")
+            try:
+                x = min(max(float(posicao), 0.0), 1.0) if posicao else 0.5
+            except ValueError:
+                x = 0.5
+            self._pendentes = [Leitura(texto.strip(), 0.95, x, 0.5)] * self._quadros
         return [self._pendentes.pop()]
 
 
@@ -65,6 +76,7 @@ class DetectorWebcam:
         ok, quadro = self._captura.read()
         if not ok:
             return []
+        altura, largura = quadro.shape[:2]
         leituras = []
         for caixa in self._yolo(quadro, verbose=False)[0].boxes:
             conf_caixa = float(caixa.conf)
@@ -72,5 +84,7 @@ class DetectorWebcam:
                 continue
             x1, y1, x2, y2 = (int(v) for v in caixa.xyxy[0])
             for _pontos, texto, conf_texto in self._ocr.readtext(quadro[y1:y2, x1:x2]):
-                leituras.append(Leitura(texto, conf_caixa * float(conf_texto)))
+                leituras.append(
+                    Leitura(texto, conf_caixa * float(conf_texto), (x1 + x2) / 2 / largura, (y1 + y2) / 2 / altura)
+                )
         return leituras

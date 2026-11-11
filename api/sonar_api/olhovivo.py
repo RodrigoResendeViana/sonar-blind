@@ -64,6 +64,26 @@ def interpretar_previsao(dados: dict | None) -> list[Veiculo]:
     return sorted(veiculos, key=lambda v: v.minutos)
 
 
+def interpretar_linhas(dados: list | None) -> list[dict]:
+    """Converte /Linha/Buscar: cada linha aparece uma vez por sentido (1: TP→TS, 2: TS→TP)."""
+    linhas = []
+    for item in dados or []:
+        codigo = f"{item['lt']}-{item['tl']}"
+        principal, secundario = item.get("tp", ""), item.get("ts", "")
+        origem, destino = (principal, secundario) if item.get("sl") == 1 else (secundario, principal)
+        linhas.append(
+            {
+                "codigo": codigo,
+                "codigo_interno": item.get("cl"),
+                "sentido": item.get("sl"),
+                "origem": origem,
+                "destino": destino,
+                "circular": bool(item.get("lc")),
+            }
+        )
+    return linhas
+
+
 class ClienteOlhoVivo:
     def __init__(
         self,
@@ -110,6 +130,19 @@ class ClienteOlhoVivo:
             resposta = await self._cliente.get(caminho, params=params)
         resposta.raise_for_status()
         return resposta.json()
+
+    async def buscar_linhas(self, termo: str) -> list[dict]:
+        """Busca por número ou nome (ex.: "8000", "Lapa"). Sem cache: a busca é rara."""
+        if not self.configurado:
+            raise OlhoVivoIndisponivel("token do Olho Vivo não configurado")
+        try:
+            dados = await self._get("/Linha/Buscar", {"termosBusca": termo})
+            linhas = interpretar_linhas(dados)
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as erro:
+            OLHOVIVO_REQUISICOES.labels("erro").inc()
+            raise OlhoVivoIndisponivel(f"falha ao consultar o Olho Vivo: {erro.__class__.__name__}") from erro
+        OLHOVIVO_REQUISICOES.labels("ok").inc()
+        return linhas
 
     async def previsao_parada(self, codigo_parada: int) -> list[Veiculo]:
         async with self._trava:

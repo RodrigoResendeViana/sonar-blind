@@ -107,9 +107,54 @@ services:
     <<: *padrao
     image: ollama/ollama:latest
     profiles: [ia]
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_KEEP_ALIVE: 24h          # o modelo fica carregado: a 1ª pergunta não espera o load
     volumes:
       - ollama:/root/.ollama
-    mem_limit: 5g
+    # 8 GiB na EC2 para tudo: o qwen2.5:3b (q4) usa ~2,5 GiB; com ia + rpa + monitoramento sobra ~1 GiB
+    mem_limit: 3500m
+
+  # agente de IA generativa: a API chama http://ia:8100/perguntar quando SONAR_IA_URL aponta para ele
+  ia:
+    <<: *padrao
+    image: ${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}/sonar-ia:${SONAR_IMAGE_TAG:-latest}
+    profiles: [ia]
+    environment:
+      SONAR_API_URL: http://api:8000
+      SONAR_OLLAMA_URL: http://ollama:11434
+      SONAR_IA_MODELO: ${SONAR_IA_MODELO:-qwen2.5:3b}
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on: [ollama]
+    mem_limit: 256m
+
+  # robô de RPA (n8n): só no localhost da EC2; acesse por túnel do SSM (terraform output abrir_o_n8n)
+  n8n:
+    <<: *padrao
+    image: n8nio/n8n:stable
+    profiles: [rpa]
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      N8N_ENCRYPTION_KEY: ${SONAR_N8N_CHAVE:-troque-esta-chave-local}
+      N8N_HOST: localhost
+      N8N_SECURE_COOKIE: "false"           # o túnel do SSM já é cifrado; o acesso é só por localhost
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      TZ: America/Sao_Paulo
+      SONAR_API_URL: http://api:8000
+      SONAR_TOKEN_SERVICO: ${SONAR_TOKEN_SERVICO:-}
+      SONAR_TELEGRAM_CHAT_ID: ${SONAR_TELEGRAM_CHAT_ID:-}
+    volumes:
+      - n8n_dados:/home/node/.n8n
+      - ../../rpa/n8n:/workflows:ro
+    cap_drop: [ALL]
+    depends_on: [api]
+    mem_limit: 512m
 
   # ---------------------------------------------------------------- monitoramento (só na EC2)
   prometheus:
@@ -181,3 +226,4 @@ volumes:
   prometheus_dados:
   alertmanager_dados:
   grafana_dados:
+  n8n_dados:

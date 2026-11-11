@@ -561,6 +561,21 @@ class Sonar:
             raise OlhoVivoIndisponivel("parada sem código da SPTrans cadastrado")
         return await self.olhovivo.previsao_parada(parada.codigo_sptrans)
 
+    async def buscar_linhas(self, termo: str) -> tuple[str, list[dict]]:
+        """Olho Vivo quando há token; sem ele, as linhas cadastradas (modo demonstração)."""
+        if self.olhovivo.configurado:
+            return "olhovivo", (await self.olhovivo.buscar_linhas(termo))[:20]
+        termo_min = termo.casefold()
+        encontradas = []
+        for parada in self.paradas.todas():
+            for linha in parada.linhas:
+                if termo_min in linha.codigo.casefold() or termo_min in linha.destino.casefold():
+                    encontradas.append(
+                        {"codigo": linha.codigo, "destino": linha.destino, "origem": "", "sentido": 1,
+                         "codigo_interno": None, "circular": False, "parada_id": parada.id}
+                    )
+        return "demonstracao", encontradas
+
     def paradas_com_espera_real(self) -> list[str]:
         with self._leitura() as s:
             ids = {e.parada_id for e in self._ativas(s, demo=False)}

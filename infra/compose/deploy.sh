@@ -45,9 +45,11 @@ TOKEN_SERVICO="$(parametro /sonar/api/token-servico)"
 SAL_HASH="$(parametro /sonar/api/sal-hash)"
 OLHOVIVO_TOKEN="$(parametro_opcional /sonar/olhovivo/token)"
 IA_URL="$(parametro_opcional /sonar/ia/url)"
+IA_MODELO="$(parametro_opcional /sonar/ia/modelo)"
 PERFIS="$(parametro_opcional /sonar/compose/perfis)"
 GHCR_USUARIO="$(parametro_opcional /sonar/ghcr/usuario)"
 GRAFANA_SENHA="$(parametro /sonar/grafana/senha)"
+N8N_CHAVE="$(parametro_opcional /sonar/n8n/chave)"
 TELEGRAM_TOKEN="$(parametro_opcional /sonar/telegram/token)"
 TELEGRAM_CHAT_ID="$(parametro_opcional /sonar/telegram/chat-id)"
 GHCR_TOKEN="$(parametro_opcional /sonar/ghcr/token)"
@@ -72,7 +74,11 @@ while IFS=$'\t' read -r nome senha; do
         "$usuario" "$p" "$p" "$p" "$p" "$p" ;;
     camera-*)
       p="${usuario#camera-}"
-      printf 'user %s\ntopic write sonar/parada/%s/visao\ntopic write sonar/parada/%s/camera/status\ntopic read sonar/parada/%s/cmd\n\n' \
+      printf 'user %s\ntopic write sonar/parada/%s/visao\ntopic write sonar/parada/%s/mira\ntopic write sonar/parada/%s/camera/status\ntopic read sonar/parada/%s/cmd\n\n' \
+        "$usuario" "$p" "$p" "$p" "$p" ;;
+    braco-*)
+      p="${usuario#braco-}"
+      printf 'user %s\ntopic read sonar/parada/%s/mira\ntopic read sonar/parada/%s/cmd\ntopic write sonar/parada/%s/braco/status\n\n' \
         "$usuario" "$p" "$p" "$p" ;;
     bordo-*)
       o="${usuario#bordo-}"
@@ -101,7 +107,7 @@ case "$TELEGRAM_CHAT_ID" in ''|-[0-9]*|[0-9]*) ;; *) falhar "/sonar/telegram/cha
 
 escrever_env() {
   local conf_mqtt="$1"
-  for par in "DOMINIO:$DOMINIO" "OLHOVIVO:$OLHOVIVO_TOKEN" "IA_URL:$IA_URL" "PERFIS:$PERFIS"; do
+  for par in "DOMINIO:$DOMINIO" "OLHOVIVO:$OLHOVIVO_TOKEN" "IA_URL:$IA_URL" "IA_MODELO:$IA_MODELO" "PERFIS:$PERFIS"; do
     seguro "${par%%:*}" "${par#*:}"
   done
   cat >"$COMPOSE_DIR/.env" <<EOF
@@ -116,7 +122,9 @@ SONAR_OLHOVIVO_TOKEN='$OLHOVIVO_TOKEN'
 SONAR_TOKEN_SERVICO='$TOKEN_SERVICO'
 SONAR_SAL_HASH='$SAL_HASH'
 SONAR_IA_URL='$IA_URL'
+SONAR_IA_MODELO='${IA_MODELO:-qwen2.5:3b}'
 SONAR_GRAFANA_PASSWORD='$GRAFANA_SENHA'
+SONAR_N8N_CHAVE='$N8N_CHAVE'
 SONAR_TELEGRAM_CHAT_ID='$TELEGRAM_CHAT_ID'
 COMPOSE_PROFILES='producao${PERFIS:+,$PERFIS}'
 EOF
@@ -168,12 +176,15 @@ elif [ "$CERT_MUDOU" = 1 ]; then
   docker compose restart mqtt
 fi
 
+if [[ ",$PERFIS," == *",rpa,"* ]] && [ -d "$COMPOSE_DIR/../../rpa/n8n" ]; then
+  log "importando os fluxos do n8n (rpa/n8n)"
+  docker compose exec -T n8n n8n import:workflow --separate --input=/workflows >/dev/null || log "AVISO: falha ao importar os fluxos do n8n"
+fi
+
 if [[ ",$PERFIS," == *",ia,"* ]]; then
-  MODELO="$(parametro_opcional /sonar/ia/modelo)"
-  if [ -n "$MODELO" ]; then
-    log "baixando o modelo $MODELO no Ollama"
-    docker compose exec -T ollama ollama pull "$MODELO"
-  fi
+  MODELO="${IA_MODELO:-qwen2.5:3b}"
+  log "baixando o modelo $MODELO no Ollama"
+  docker compose exec -T ollama ollama pull "$MODELO"
 fi
 
 log "conferindo a API"
