@@ -7,6 +7,14 @@
 	cert_issuer acme
 }
 
+# saúde do container (healthcheck do Docker): só no loopback, sem HTTPS nem redirecionamento.
+# Bater em http://127.0.0.1/ não serve: com o domínio configurado, o Caddy redireciona para HTTPS,
+# e não há certificado para 127.0.0.1.
+http://127.0.0.1:2020 {
+	bind 127.0.0.1
+	respond "ok" 200
+}
+
 {$SONAR_SITE_ADDRESS:http://localhost} {
 	encode zstd gzip
 
