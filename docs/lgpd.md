@@ -7,7 +7,8 @@ desenho segue a minimização (art. 6º, III): o Sonar não sabe quem é o usuá
 | Dado | Onde fica | Para quê | Quanto tempo | Quem acessa |
 |---|---|---|---|---|
 | Id anônimo do aparelho | celular (localStorage); na API, só o SHA-256 com sal | agrupar as esperas do mesmo aparelho | até o fim do projeto | ninguém consegue voltar ao id |
-| Localização | só na memória do app | achar o ponto mais perto e checar a distância | não é gravada | — |
+| Localização | memória do app e da API (sessão da conversa) | planejar a viagem, avisar o ponto ao chegar, avisar a hora de descer | some com a sessão (até 6 h); não vai para o banco | — |
+| Destino falado | memória da API (sessão da conversa) | planejar a viagem; endereço desconhecido é procurado no OpenStreetMap (Nominatim) pelo servidor, sem dado do usuário | some com a sessão; não vai para o banco | OpenStreetMap (só o texto do destino) |
 | Espera (ponto, linhas, horários) | Postgres na EC2 | avisar o motorista, validar o embarque, indicadores | até o fim do projeto | API; painel vê só agregados |
 | Ocorrência com evidências | Postgres na EC2 | reclamação no SP156, só com "sim" do usuário | até o fim do projeto | robô de RPA (com token) |
 | Imagem da câmera | memória do notebook do ponto | ler o letreiro | descartada na hora; nunca sai do ponto | — |

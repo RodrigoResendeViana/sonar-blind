@@ -4,10 +4,15 @@
 da viagem de ônibus de uma pessoa cega: saber qual ônibus parou na frente dela e garantir que o
 motorista saiba que ela está ali.
 
-- **App de voz (PWA):** a pessoa pergunta pela linha, chega ao ponto e ouve "chegando agora:
-  linha 8000-10. É o seu", com vibração longa.
-- **Sonar Ponto:** ESP32 com ultrassom, LED e buzzer, mais uma câmera que lê o letreiro. Apita
-  para a pessoa achar o poste, pisca o LED para o motorista e registra cada passagem.
+- **App de voz (PWA), com um botão só:** a pessoa diz para onde vai ("quero ir para o hospital"), o
+  Sonar planeja o caminho (até uma baldeação), avisa o ponto quando ela chega, diz "chegando agora:
+  linha 8000-10. É o seu", avisa a hora de descer e, se o ônibus passar direto, registra a
+  reclamação quando ela diz "quero reclamar".
+- **Sonar Ponto:** ESP32 com ultrassom, LED, buzzer e um botão no poste, mais uma câmera que lê o
+  letreiro. Apita para a pessoa achar o poste, pisca o LED para o motorista e registra cada
+  passagem. Sem app ou sem internet, o botão do poste avisa os motoristas do mesmo jeito.
+- **Sonar Braço:** cabeça pan-tilt (ESP32 + 2 servos) com a câmera (webcam ou ESP32-CAM sem fio)
+  que segue o letreiro do ônibus chegando.
 - **Sonar Bordo:** o bipper na cabine. Avisa o motorista duas paradas antes; ele confirma com um
   toque e a pessoa ouve "o motorista confirmou".
 - **Prova quando o ônibus não para:** com o "sim" do usuário, um robô registra a reclamação com
@@ -34,10 +39,13 @@ Projeto da Global Solution 2026.2 (CitizenTech), 4º ano de Engenharia de Softwa
 
 ## Experimente
 
-Abra o app e toque em **Ver a jornada completa**: em cerca de 2 minutos ele roda a espera, o
-aviso ao motorista, um ônibus errado, o certo e o embarque, com dados de exemplo. Abra ao mesmo
-tempo, em outra aba, a tela **Motorista (simulado)** para apertar o "Ciente", ou **Ponto
-(simulado)** para fazer o papel da câmera.
+Abra o app, toque no botão e diga **"quero ir para o hospital"** (ou escreva, em "Mais opções").
+Na demonstração, a viagem sai da maquete por uma rede de linhas fictícias: o Sonar planeja DEMO-20 +
+DEMO-30, você diz "sim", "cheguei", ouve o ônibus errado e o certo, diz "embarquei" e ele avisa a
+hora de descer e a baldeação. Para ver um ônibus passando direto, escolha "O ônibus passa direto"
+em "Mais opções" e diga "quero reclamar". Abra ao mesmo tempo, em outra aba, a tela **Motorista
+(simulado)** para apertar o "Ciente", ou **Ponto (simulado)** para fazer o papel da câmera e do
+botão do poste. Com o GTFS da SPTrans carregado, o mesmo vale para as linhas reais de São Paulo.
 
 ## Repositório
 

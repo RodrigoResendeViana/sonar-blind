@@ -13,7 +13,9 @@ em `https://sonar.rodrigoviana.app.br/api/docs`.
 | `GET /paradas`, `GET /paradas/proxima?lat=&lon=` | app | paradas com Sonar Ponto; a localização não é gravada |
 | `GET /paradas/{id}/previsao` | app, IA | previsão do Olho Vivo (cache de 30 s) ou dados de demonstração |
 | `GET /linhas?termo=` | agente de IA | busca de linha por número ou destino (Olho Vivo) |
-| `POST /ia/perguntar` | app | pergunta por voz (contrato abaixo) |
+| `POST /conversa` | app (tela de voz) | um turno da conversa: `{sessao, evento: abrir \| fala \| posicao \| tick, texto, lat, lon, cenario_demo}` → `{sessao, estado, fala, espera_id, plano, trecho, acompanhar, intervalo_s, pedir_localizacao?}` |
+| `GET /viagens/planejar?destino=&lat=&lon=` | agente de IA | plano de viagem (até uma baldeação) e a frase pronta |
+| `POST /ia/perguntar` | app, conversa | pergunta livre (contrato abaixo) |
 | `POST /esperas` | app ("Cheguei") | abre a espera e liga o Sonar Ponto |
 | `GET /esperas/{id}` | app | estado da espera |
 | `GET /esperas/{id}/eventos` | app | **Server-Sent Events** com as falas (abaixo) |
@@ -80,7 +82,7 @@ Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<para
 |---|---|---|
 | `sonar/parada/{id}/cmd` | API → Sonar Ponto e câmera (retido) | `{"acao":"ativar","espera_id","linhas_alvo":[...],"expira_em"}`, `{"acao":"desativar"}`, `{"acao":"localizar"}`, `{"acao":"config","limiar_cm":15}` |
 | `sonar/parada/{id}/visao` | câmera → Sonar Ponto | `{"linha_lida","confianca","passou_em"}` (só texto; nenhuma imagem) |
-| `sonar/parada/{id}/evento` | Sonar Ponto → API | `{"espera_id","linha_lida","confianca","passou_em","tempo_parado_s","parou","camera_ok"}` |
+| `sonar/parada/{id}/evento` | Sonar Ponto → API | passagem: `{"espera_id","linha_lida","confianca","passou_em","tempo_parado_s","parou","camera_ok"}`; botão do poste: `{"tipo":"botao","em"}` (a API avisa os motoristas de todas as linhas do ponto por 10 min) |
 | `sonar/parada/{id}/status` | Sonar Ponto → API (retido, 30 s) | `{"online","estado","rssi","uptime_s","fila","camera_ok","versao"}`; a queda vira `{"online":false}` (testamento MQTT) |
 | `sonar/parada/{id}/camera/status` | câmera → API e Ponto (retido) | `{"online","ativa"}` |
 | `sonar/parada/{id}/mira` | câmera → braço (até ~7/s) | `{"alvo":true,"x":0.42,"y":0.5,"linha":"DEMO-10"}` (centro do letreiro, 0 a 1) ou `{"alvo":false}` quando o letreiro some por 1 s |
@@ -91,6 +93,22 @@ Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<para
 
 O aviso vai para o prefixo do ônibus que o Olho Vivo prevê chegar primeiro, quando faltam até
 4 minutos (cerca de 2 paradas; `paradas_ate` é essa estimativa).
+
+## Conversa por voz (app ↔ API)
+
+O app só tem um botão. Cada frase vira `POST /conversa {"evento":"fala","texto":"quero ir para o hospital"}`;
+a resposta traz a `fala` (o app lê pelo leitor de tela ou pela voz do navegador) e o `estado`:
+
+`inicio` → `confirmar_plano` ("quer ir?") → `indo_ao_ponto` → `no_ponto` (espera aberta; os avisos do
+ônibus chegam pelo SSE da espera) → `a_bordo` → (baldeação: `no_ponto` de novo) → `chegou`.
+Se o ônibus passa direto: `apos_ocorrencia` (protocolo pelo SSE; "esperar de novo" volta a `no_ponto`).
+
+Com `acompanhar: true`, o app manda `{"evento":"posicao","lat","lon"}` (ou `tick`) a cada
+`intervalo_s`: é assim que a API percebe que a pessoa chegou ao ponto (40 m) e avisa a hora de descer
+(450 m: "prepare-se"; 70 m: "desça agora"). Na demonstração, a viagem é simulada pelo tempo.
+Se a API precisar da localização, responde `pedir_localizacao: true` e `repetir_texto`.
+
+A sessão fica na memória da API (até 6 h) e a localização não vai para o banco.
 
 ## Linhas (API ↔ agente de IA)
 
