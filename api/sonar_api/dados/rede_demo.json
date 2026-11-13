@@ -1,0 +1,33 @@
+{
+  "_comentario": "Rede fictícia em volta da maquete (parada demo). DEMO-10 e DEMO-20 saem da maquete; DEMO-30 sai do Centro (baldeação para o Hospital e a Universidade).",
+  "pontos": [
+    {"id": "demo", "nome": "Ponto de demonstração (Itaquera)", "lat": -23.5424, "lon": -46.4712},
+    {"id": "ex-av-exemplo", "nome": "Avenida Exemplo, 400", "lat": -23.5424, "lon": -46.4660},
+    {"id": "ex-escola", "nome": "Escola Exemplo", "lat": -23.5418, "lon": -46.4600},
+    {"id": "ex-terminal", "nome": "Terminal Exemplo", "lat": -23.5410, "lon": -46.4530},
+    {"id": "ex-praca", "nome": "Praça Exemplo", "lat": -23.5430, "lon": -46.4790},
+    {"id": "ex-mercado", "nome": "Mercado Exemplo", "lat": -23.5440, "lon": -46.4880},
+    {"id": "ex-centro", "nome": "Centro (exemplo)", "lat": -23.5450, "lon": -46.4980},
+    {"id": "ex-biblioteca", "nome": "Biblioteca Exemplo", "lat": -23.5390, "lon": -46.4990},
+    {"id": "ex-hospital", "nome": "Hospital Exemplo", "lat": -23.5330, "lon": -46.5000},
+    {"id": "ex-universidade", "nome": "Universidade Exemplo", "lat": -23.5270, "lon": -46.5010}
+  ],
+  "linhas": [
+    {"codigo": "DEMO-10", "destino": "Terminal Exemplo", "volta_destino": "Itaquera (exemplo)",
+     "ida": ["demo", "ex-av-exemplo", "ex-escola", "ex-terminal"]},
+    {"codigo": "DEMO-20", "destino": "Centro (exemplo)", "volta_destino": "Itaquera (exemplo)",
+     "ida": ["demo", "ex-praca", "ex-mercado", "ex-centro"]},
+    {"codigo": "DEMO-30", "destino": "Universidade Exemplo", "volta_destino": "Centro (exemplo)",
+     "ida": ["ex-centro", "ex-biblioteca", "ex-hospital", "ex-universidade"]}
+  ],
+  "lugares": [
+    {"nome": "Terminal Exemplo", "lat": -23.5408, "lon": -46.4527, "apelidos": ["terminal", "rodoviária"]},
+    {"nome": "Centro", "lat": -23.5453, "lon": -46.4984, "apelidos": ["centro da cidade", "praça central", "prefeitura"]},
+    {"nome": "Hospital Exemplo", "lat": -23.5333, "lon": -46.5003, "apelidos": ["hospital", "pronto socorro", "posto de saúde", "ubs", "médico", "consulta"]},
+    {"nome": "Universidade Exemplo", "lat": -23.5268, "lon": -46.5013, "apelidos": ["universidade", "faculdade", "fiap", "campus"]},
+    {"nome": "Mercado Exemplo", "lat": -23.5442, "lon": -46.4882, "apelidos": ["mercado", "feira", "supermercado"]},
+    {"nome": "Escola Exemplo", "lat": -23.5416, "lon": -46.4598, "apelidos": ["escola", "colégio"]},
+    {"nome": "Biblioteca Exemplo", "lat": -23.5388, "lon": -46.4993, "apelidos": ["biblioteca"]},
+    {"nome": "Praça Exemplo", "lat": -23.5432, "lon": -46.4792, "apelidos": ["praça"]}
+  ]
+}
