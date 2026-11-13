@@ -40,5 +40,7 @@ OCORRENCIAS = Counter("sonar_ocorrencias_total", "Ônibus que não pararam", ["c
 IA_LATENCIA = Histogram(
     "sonar_ia_latencia_segundos", "Latência das respostas da IA", ["modo"], buckets=(0.1, 0.5, 1, 2, 4, 8, 15, 30)
 )
+PEDIDOS_BOTAO = Counter("sonar_botao_pedidos_total", "Pedidos feitos pelo botão físico do Sonar Ponto")
+VIAGENS_PLANEJADAS = Counter("sonar_viagens_planejadas_total", "Viagens planejadas por voz", ["rede", "resultado"])
 RPA_AVISOS = Counter("sonar_rpa_avisos_total", "Avisos da API ao robô de RPA (webhook)", ["resultado"])
 IA_RESPOSTAS = Counter("sonar_ia_respostas_total", "Respostas da IA por status", ["modo", "status"])

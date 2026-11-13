@@ -56,18 +56,42 @@ ROTEIROS: dict[str, list[tuple[float, str, object]]] = {
 PREVISAO_INICIAL = previsao_exemplo(6, 3)
 
 
+PREFIXOS = {LINHA_CERTA: PREFIXO_CERTO, LINHA_ERRADA: PREFIXO_ERRADO, "DEMO-30": "90003"}
+
+
+def _prefixo(linha: str) -> str:
+    return PREFIXOS.get(linha, "9" + "".join(c for c in linha if c.isdigit())[:4].ljust(4, "0"))
+
+
+def _previsao_da_espera(parada, certa: str, outra: str | None, minutos_certa: int, minutos_outra: int) -> list[Veiculo]:
+    veiculos = [Veiculo(certa, parada.destino(certa), _prefixo(certa), minutos_certa, True)]
+    if outra:
+        veiculos.append(Veiculo(outra, parada.destino(outra), _prefixo(outra), minutos_outra, True))
+    return sorted(veiculos, key=lambda v: v.minutos)
+
+
 async def executar(sonar, espera_id: str, cenario: str, velocidade: float) -> None:
+    """Roda o roteiro na parada e na linha da própria espera (a maquete, ou um ponto da rede de demonstração).
+
+    A "linha certa" é a que a pessoa espera; a "errada" é outra linha do mesmo ponto, se houver.
+    """
     loop = asyncio.get_running_loop()
     inicio = loop.time()
+    primeira = await run_in_threadpool(sonar.obter_espera, espera_id)
+    parada_id, certa = primeira["parada_id"], primeira["linhas"][0]
+    parada = sonar.paradas.obter(parada_id)
+    outra = next((linha for linha in parada.codigos if linha != certa), None)
     for instante, passo, dados in ROTEIROS[cenario]:
         await asyncio.sleep(max(0.0, inicio + instante / velocidade - loop.time()))
         espera = await run_in_threadpool(sonar.obter_espera, espera_id)
         if espera["status"] != "aguardando":
             return
         if passo == "previsao":
-            veiculos = previsao_exemplo(*dados)
-            sonar.previsao_demo = veiculos
-            await run_in_threadpool(sonar.processar_previsao, PARADA_DEMO, veiculos, True)
+            veiculos = _previsao_da_espera(parada, certa, outra, *dados)
+            sonar.previsao_demo_por_parada[parada_id] = veiculos
+            if parada_id == PARADA_DEMO:
+                sonar.previsao_demo = veiculos
+            await run_in_threadpool(sonar.processar_previsao, parada_id, veiculos, True)
         elif passo == "ciente":
             aviso = espera.get("aviso")
             if aviso and not aviso.get("ciente_em"):
@@ -75,4 +99,9 @@ async def executar(sonar, espera_id: str, cenario: str, velocidade: float) -> No
                     sonar.registrar_ciente, aviso["prefixo"], {"espera_id": espera_id, "simulado": True}
                 )
         elif passo == "deteccao":
-            await run_in_threadpool(sonar.processar_deteccao, PARADA_DEMO, {**dados, "origem": "demo"})
+            linha_lida = certa if dados["linha_lida"] == LINHA_CERTA else outra
+            if linha_lida is None:
+                continue  # ponto com uma linha só: não há "ônibus errado" para mostrar
+            await run_in_threadpool(
+                sonar.processar_deteccao, parada_id, {**dados, "linha_lida": linha_lida, "origem": "demo"}
+            )

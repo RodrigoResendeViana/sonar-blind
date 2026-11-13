@@ -96,6 +96,12 @@ class CadastroParadas:
             )
         return cls(paradas)
 
+    def registrar(self, parada: Parada) -> Parada:
+        """Parada que entra em uso na hora (ponto do GTFS ou da rede de demonstração escolhido no plano)."""
+        if not PADRAO_ID.fullmatch(parada.id):
+            raise ValueError(f"id de parada inválido: {parada.id!r}")
+        return self._paradas.setdefault(parada.id, parada)
+
     def obter(self, parada_id: str) -> Parada:
         return self._paradas[parada_id]
 

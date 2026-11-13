@@ -45,6 +45,15 @@ def deteccao(
     return {"esperas_afetadas": afetadas}
 
 
+@router.post("/simulador/paradas/{parada_id}/botao", dependencies=[Depends(limitar("simulador", 2))])
+def botao(parada_id: str = Path(pattern=PADRAO_ID), sonar: Sonar = Depends(obter_sonar)) -> dict:
+    """O botão físico do Sonar Ponto ("tem passageiro com deficiência visual aqui")."""
+    if not sonar.paradas.existe(parada_id):
+        raise NaoEncontrado("parada não encontrada")
+    espera = sonar.pedido_presencial(parada_id)
+    return {"espera": espera}
+
+
 @router.post("/simulador/onibus/{prefixo}/ciente", dependencies=[Depends(limitar("simulador", 2))])
 def ciente(corpo: CienteSimulado, prefixo: str = Path(pattern=PADRAO_PREFIXO), sonar: Sonar = Depends(obter_sonar)) -> dict:
     """O botão "Ciente" do Sonar Bordo simulado."""

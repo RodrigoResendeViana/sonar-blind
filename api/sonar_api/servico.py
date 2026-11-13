@@ -29,6 +29,7 @@ from .metricas import (
     ESPERAS_ATIVAS,
     ESPERAS_CRIADAS,
     OCORRENCIAS,
+    PEDIDOS_BOTAO,
 )
 from .mqtt_ponte import Publicador, PublicadorMemoria
 from .olhovivo import ClienteOlhoVivo, OlhoVivoIndisponivel, Veiculo
@@ -49,6 +50,7 @@ ENCERRAM_STREAM = {
     "expirada",
 }
 LIMIAR_PAROU_S = 3.0
+MINUTOS_BOTAO = 10  # quanto dura o pedido feito pelo botão físico do ponto
 CONFIANCA_MINIMA = 0.6
 PADRAO_REF = re.compile(r"^[A-Za-z0-9-]{1,40}$")
 
@@ -133,6 +135,8 @@ class Sonar:
         self.barramento = barramento
         self.publicador: Publicador = publicador or PublicadorMemoria()
         self.previsao_demo: list[Veiculo] = []
+        # previsão de exemplo de cada parada fictícia da rede de demonstração (a maquete usa previsao_demo)
+        self.previsao_demo_por_parada: dict[str, list[Veiculo]] = {}
         self._trava = threading.RLock()
         self._fechado = False
         if not cfg.sal_hash:
@@ -378,6 +382,7 @@ class Sonar:
         lat: float | None = None,
         lon: float | None = None,
         demo: bool = False,
+        minutos: int | None = None,
     ) -> dict:
         if not self.paradas.existe(parada_id):
             raise NaoEncontrado("parada não encontrada")
@@ -394,7 +399,7 @@ class Sonar:
         distancia = None
         if lat is not None and lon is not None and parada.lat is not None and parada.lon is not None:
             distancia = round(distancia_m(lat, lon, parada.lat, parada.lon))
-        duracao = timedelta(minutes=10 if demo else self.cfg.espera_minutos)
+        duracao = timedelta(minutes=minutos or (10 if demo else self.cfg.espera_minutos))
 
         with self._transacao() as (s, saida):
             instante = agora()
@@ -437,6 +442,29 @@ class Sonar:
             resultado = self._espera_dict(s, espera)
         ESPERAS_CRIADAS.labels(str(demo).lower()).inc()
         return resultado
+
+    def pedido_presencial(self, parada_id: str) -> dict | None:
+        """Botão físico do Sonar Ponto: avisa os motoristas de todas as linhas, mesmo sem o app.
+
+        Quem não tem o app (ou está sem internet) aperta o botão no poste: o LED pisca para os
+        motoristas e o Sonar Bordo dos ônibus que vêm para cá toca. O motorista para e fala a linha.
+        Apertar de novo renova o pedido.
+        """
+        if not self.paradas.existe(parada_id):
+            log.warning("botão de parada desconhecida: %s", parada_id)
+            return None
+        parada = self.paradas.obter(parada_id)
+        if not parada.codigos:
+            return None
+        PEDIDOS_BOTAO.inc()
+        with self._transacao() as (s, saida):
+            for espera in self._ativas(s, parada_id):
+                if espera.origem == "botao":
+                    espera.expira_em = agora() + timedelta(minutes=MINUTOS_BOTAO)
+                    self._emitir(s, saida, espera, "botao_renovado", f"Pedido do botão renovado por {MINUTOS_BOTAO} minutos.")
+                    self._comandar_ponto(s, saida, parada_id)
+                    return self._espera_dict(s, espera)
+        return self.criar_espera(parada_id, parada.codigos, "botao", None, None, None, parada.demo, MINUTOS_BOTAO)
 
     @staticmethod
     def _fala_chegada(parada: Parada, distancia: int | None) -> str:
@@ -556,7 +584,9 @@ class Sonar:
             raise NaoEncontrado("parada não encontrada")
         parada = self.paradas.obter(parada_id)
         if parada.demo:
-            return list(self.previsao_demo)
+            if parada_id in self.previsao_demo_por_parada:
+                return list(self.previsao_demo_por_parada[parada_id])
+            return list(self.previsao_demo) if parada_id == "demo" else []
         if not parada.codigo_sptrans:
             raise OlhoVivoIndisponivel("parada sem código da SPTrans cadastrado")
         return await self.olhovivo.previsao_parada(parada.codigo_sptrans)
@@ -812,7 +842,8 @@ class Sonar:
                 saida,
                 e,
                 "onibus_passou_direto",
-                f"A linha {linha}{sentido} passou sem parar. Se quiser registrar, toque em Não parou.",
+                f"A linha {linha}{sentido}{',' if sentido else ''} passou sem parar. "
+                "Quer registrar uma reclamação? Diga: quero reclamar.",
                 e_o_seu=True,
                 vibrar="longa",
                 **registro,
@@ -890,7 +921,10 @@ class Sonar:
         grupo, ref, assunto = partes[1], partes[2], partes[3]
         if grupo == "parada":
             if assunto == "evento" and len(partes) == 4:
-                self.processar_deteccao(ref, dados)
+                if dados.get("tipo") == "botao":
+                    self.pedido_presencial(ref)
+                else:
+                    self.processar_deteccao(ref, dados)
             elif assunto == "status" and len(partes) == 4:
                 self.atualizar_dispositivo("ponto", ref, dados)
             elif assunto == "camera" and partes[4:] == ["status"]:
@@ -928,7 +962,7 @@ class Sonar:
                     if espera.perguntou_embarque_em is None and decorrido >= primeira:
                         espera.perguntou_embarque_em = instante
                         self._emitir(
-                            s, saida, espera, "perguntar_embarque", "Você embarcou? Toque em Embarquei ou diga embarquei."
+                            s, saida, espera, "perguntar_embarque", "Você embarcou? Se sim, diga: embarquei."
                         )
                     elif (
                         espera.perguntou_embarque_em is not None
@@ -942,7 +976,7 @@ class Sonar:
                             espera,
                             "perguntar_parou",
                             f"A linha {espera.passagem_linha} passou e você não confirmou o embarque. "
-                            "Ele parou? Se não parou, toque em Não parou.",
+                            "Se ele não parou, diga: quero reclamar.",
                         )
             for parada_id in afetadas:
                 self._comandar_ponto(s, saida, parada_id)
