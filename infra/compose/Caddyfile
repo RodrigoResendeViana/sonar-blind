@@ -7,6 +7,14 @@
 	cert_issuer acme
 }
 
+# saúde do container (healthcheck do Docker): só no loopback, sem HTTPS nem redirecionamento.
+# Bater em http://127.0.0.1/ não serve: com o domínio configurado, o Caddy redireciona para HTTPS,
+# e não há certificado para 127.0.0.1.
+http://127.0.0.1:2020 {
+	bind 127.0.0.1
+	respond "ok" 200
+}
+
 {$SONAR_SITE_ADDRESS:http://localhost} {
 	encode zstd gzip
 
@@ -16,7 +24,10 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "microphone=(self), geolocation=(self), screen-wake-lock=(self), camera=(), payment=(), usb=()"
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		# "?" = valor padrão: só entra se a rota não definiu o seu (o Grafana e o /api/docs definem).
+		# Este bloco roda no fim da resposta (o "-Server" adia tudo); sem o "?", ele sobrescrevia
+		# a CSP do Grafana e o Grafana não carregava os próprios scripts.
+		?Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		-Server
 	}
 
@@ -27,7 +38,7 @@
 
 	# Grafana (monitoramento): ele mesmo pede login
 	handle /grafana* {
-		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'"
 		reverse_proxy grafana:3000
 	}
 

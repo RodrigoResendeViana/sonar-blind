@@ -27,8 +27,9 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
-        // a API, o SSE e as métricas nunca passam pelo cache do service worker
-        navigateFallbackDenylist: [/^\/api\//, /^\/healthz/, /^\/metrics/, /^\/node-metrics/],
+        // o que não é o app nunca passa pelo service worker: a API (e o SSE), o teste de fumaça e o
+        // Grafana. Sem isso, quem já abriu o app recebia a tela do app ao abrir /grafana.
+        navigateFallbackDenylist: [/^\/api\//, /^\/healthz/, /^\/grafana(\/|$)/],
       },
     }),
   ],
