@@ -1,7 +1,11 @@
-# Dataset do letreiro (formato Ultralytics). As imagens ficam fora do Git.
-path: dados
-train: treino/imagens
-val: validacao/imagens
-test: teste/imagens
+# Dataset de FOTOS REAIS (formato Ultralytics). As imagens ficam fora do Git (dados/*/ no .gitignore).
+# Estrutura esperada (é a do "YOLOv8/YOLO11" do Roboflow, renomeando as pastas):
+#   dados/reais/images/{train,val,test}/*.jpg
+#   dados/reais/labels/{train,val,test}/*.txt
+# O dataset sintético não usa este arquivo: sintetico.py gera dados/sintetico/letreiros.yaml.
+path: reais
+train: images/train
+val: images/val
+test: images/test
 names:
   0: letreiro

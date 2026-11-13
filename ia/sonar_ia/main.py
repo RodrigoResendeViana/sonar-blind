@@ -15,7 +15,12 @@ def criar_app(ollama: httpx.AsyncClient | None = None, api: httpx.AsyncClient | 
             base_url=os.getenv("SONAR_OLLAMA_URL", "http://ollama:11434"), timeout=18.0
         )
         cliente_api = api or httpx.AsyncClient(base_url=os.getenv("SONAR_API_URL", "http://api:8000"), timeout=5.0)
-        app.state.agente = Agente(cliente_ollama, Ferramentas(cliente_api), os.getenv("SONAR_IA_MODELO", "qwen2.5:3b"))
+        app.state.agente = Agente(
+            cliente_ollama,
+            Ferramentas(cliente_api),
+            os.getenv("SONAR_IA_MODELO", "qwen2.5:3b"),
+            float(os.getenv("SONAR_IA_PRAZO_S", "17")),
+        )
         yield
         await cliente_ollama.aclose()
         await cliente_api.aclose()

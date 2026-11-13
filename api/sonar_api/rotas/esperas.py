@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, Path, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Path, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
+from ..rpa import avisar_rpa
 from ..seguranca import limitar
 from ..servico import ENCERRAM_STREAM, Sonar
 from .comum import CABECALHOS_SSE, PADRAO_ID, PADRAO_UUID, obter_sonar, stream_canal
@@ -62,8 +63,14 @@ def embarque(corpo: Embarque, espera_id: str = IdEspera, sonar: Sonar = Depends(
 
 
 @router.post("/{espera_id}/nao-parou")
-def nao_parou(corpo: NaoParou, espera_id: str = IdEspera, sonar: Sonar = Depends(obter_sonar)) -> dict:
-    return sonar.registrar_nao_parou(espera_id, corpo.consentimento)
+def nao_parou(
+    corpo: NaoParou, tarefas: BackgroundTasks, espera_id: str = IdEspera, sonar: Sonar = Depends(obter_sonar)
+) -> dict:
+    resultado = sonar.registrar_nao_parou(espera_id, corpo.consentimento)
+    ocorrencia = resultado.get("ocorrencia")
+    if corpo.consentimento and ocorrencia and sonar.cfg.rpa_webhook_url:
+        tarefas.add_task(avisar_rpa, sonar.cfg.rpa_webhook_url, ocorrencia["id"])
+    return resultado
 
 
 @router.post("/{espera_id}/cancelar")

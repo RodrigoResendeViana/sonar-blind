@@ -1,0 +1,3 @@
+# gerar o dataset sintético e os letreiros para imprimir
+numpy
+pillow

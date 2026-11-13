@@ -49,6 +49,7 @@ services:
       SONAR_TOKEN_SERVICO: ${SONAR_TOKEN_SERVICO:-}
       SONAR_SAL_HASH: ${SONAR_SAL_HASH:?defina SONAR_SAL_HASH no .env}
       SONAR_IA_URL: ${SONAR_IA_URL:-}
+      SONAR_RPA_WEBHOOK_URL: ${SONAR_RPA_WEBHOOK_URL:-}
     cap_drop: [ALL]
     read_only: true
     tmpfs: [/tmp]

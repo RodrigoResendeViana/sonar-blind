@@ -79,9 +79,15 @@ class Ferramentas:
             {"linha": v["linha"], "destino": v.get("destino", ""), "minutos": v["minutos"]}
             for v in corpo["veiculos"][:6]
         ]
+        linhas_do_ponto = [
+            {"codigo": l["codigo"], "destino": l.get("destino", "")} for l in corpo["parada"].get("linhas", [])
+        ]
+        do_ponto = {l["codigo"] for l in linhas_do_ponto} | {v["linha"] for v in veiculos}
         return {
             "parada": corpo["parada"]["nome"],
-            "proximos": veiculos,
-            "codigos": sorted({v["linha"] for v in veiculos}),
+            "linhas_que_passam_aqui": linhas_do_ponto,
+            "proximos": veiculos or "sem previsão agora",
+            "codigos": sorted(do_ponto),
+            "codigos_do_ponto": sorted(do_ponto),
             "fonte": f"{corpo['fonte']}:previsao",
         }

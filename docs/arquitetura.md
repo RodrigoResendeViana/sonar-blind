@@ -13,7 +13,9 @@ flowchart LR
       DB[(Postgres)]
       M[Mosquitto<br/>MQTT TLS 8883]
       NE[node-exporter]
-      O[Ollama<br/>perfil ia]
+      IA[Agente de IA<br/>tool calling]
+      O[Ollama<br/>LLM local]
+      N8[n8n<br/>robô de RPA]
       PR[Prometheus + Alertmanager<br/>+ Grafana em /grafana]
     end
     SSM[SSM e<br/>Parameter Store]
@@ -21,7 +23,8 @@ flowchart LR
   end
   subgraph Ponto[Ponto de ônibus]
     SP[Sonar Ponto<br/>ESP32 + ultrassom + LED + buzzer]
-    CAM[Serviço da câmera<br/>notebook + YOLO + OCR]
+    CAM[Serviço da câmera<br/>notebook + OCR/YOLO + rastreador]
+    BR[Sonar Braço<br/>ESP32 + 2 servos pan-tilt]
   end
   SB[Sonar Bordo<br/>ESP32 na cabine]
   OV[Olho Vivo<br/>SPTrans]
@@ -33,9 +36,14 @@ flowchart LR
   API --> DB
   API <--> M
   API -->|previsão, cache 30 s| OV
-  API -.->|perfil ia| O
+  API -->|pergunta por voz| IA
+  IA --> O
+  IA -->|ferramentas: linhas e previsão| API
+  API -->|webhook interno| N8
+  N8 -->|GET/PATCH ocorrências| API
   SP <-->|MQTT TLS| M
-  CAM -->|só o texto da linha| M
+  CAM -->|texto da linha e posição do letreiro| M
+  M -->|mira| BR
   SB <-->|MQTT TLS| M
   GH -->|imagens| GHCR
   GH -->|OIDC + ssm send-command| SSM --> EC2
@@ -56,6 +64,14 @@ e apita, a API acompanha o Olho Vivo e avisa o Sonar Bordo do ônibus certo a ~4
 motorista aperta "ciente", a câmera lê o letreiro, o Sonar Ponto junta com o ultrassom e publica
 a passagem, a API fala "é o seu" pelo SSE e cruza com o "embarquei" do usuário. Se o ônibus
 passa direto, a ocorrência vai para o robô de RPA, que devolve o protocolo.
+
+**Como as matérias se encaixam.** IA generativa entende a pergunta e consulta o Olho Vivo por
+ferramentas (`ia/`); Visão computacional lê o letreiro e acha onde ele está no quadro (`edge/`,
+`visao/`); Maker Lab segue o letreiro com o braço e avisa no ponto e na cabine (`firmware/`); RPA
+transforma o "não parou" em reclamação com protocolo (`rpa/`); Secure DevOps entrega e vigia tudo
+(`infra/`, `.github/`). Cada parte tem uma rede de segurança: sem LLM, a API responde por regras;
+sem modelo treinado, a câmera usa só OCR; sem webhook, o robô roda a cada 15 minutos; sem câmera,
+o Sonar Ponto decide pelo ultrassom e avisa "sem confirmação visual".
 
 **Segurança em camadas.**
 

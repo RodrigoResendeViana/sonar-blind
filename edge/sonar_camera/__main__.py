@@ -1,4 +1,4 @@
-"""python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 [--modo webcam]
+"""python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 [--modo webcam] [--janela]
 
 Variáveis: SONAR_MQTT_HOST, SONAR_MQTT_PORTA (8883), SONAR_MQTT_USUARIO (camera-<parada>),
 SONAR_MQTT_SENHA e SONAR_MQTT_TLS (1). A senha está no Parameter Store:
@@ -12,7 +12,7 @@ import os
 
 import paho.mqtt.client as mqtt
 
-from .detectores import DetectorTeclado, DetectorWebcam
+from .detectores import DetectorCamera, DetectorTeclado, escolher_localizador
 from .servico import ServicoCamera
 
 log = logging.getLogger("sonar.camera")
@@ -27,11 +27,21 @@ def main() -> None:
     argumentos.add_argument("--camera", type=int, default=0)
     argumentos.add_argument("--modelo", default="modelos/letreiro.pt")
     argumentos.add_argument(
+        "--detector",
+        choices=["auto", "yolo", "ocr"],
+        default="auto",
+        help="auto: YOLO se o modelo existir, senão só OCR (funciona sem treinar nada)",
+    )
+    argumentos.add_argument("--janela", action="store_true", help="mostra a câmera com o letreiro marcado (para o vídeo)")
+    argumentos.add_argument(
         "--mirar-sempre", action="store_true", help="publica a posição do letreiro mesmo sem espera (demo do braço)"
     )
     opcoes = argumentos.parse_args()
 
-    detector = DetectorWebcam(opcoes.camera, opcoes.modelo) if opcoes.modo == "webcam" else DetectorTeclado()
+    if opcoes.modo == "webcam":
+        detector = DetectorCamera(escolher_localizador(opcoes.detector, opcoes.modelo), opcoes.camera, opcoes.janela)
+    else:
+        detector = DetectorTeclado()
     cliente = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"camera-{opcoes.parada}",
@@ -75,6 +85,8 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        if hasattr(detector, "fechar"):
+            detector.fechar()
         servico.status(online=False)
         cliente.loop_stop()
         cliente.disconnect()

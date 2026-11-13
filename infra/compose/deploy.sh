@@ -55,6 +55,31 @@ TELEGRAM_CHAT_ID="$(parametro_opcional /sonar/telegram/chat-id)"
 GHCR_TOKEN="$(parametro_opcional /sonar/ghcr/token)"
 [ -n "$OLHOVIVO_TOKEN" ] || log "AVISO: /sonar/olhovivo/token não existe; a API sobe só com a demonstração"
 
+# IA generativa e RPA vêm ligados: sem /sonar/compose/perfis, sobem os perfis ia e rpa.
+# Para desligar os dois, grave o valor "nenhum" nesse parâmetro.
+case "$PERFIS" in
+  '') PERFIS="ia,rpa" ;;
+  nenhum) PERFIS="" ;;
+esac
+tem_perfil() { [[ ",$PERFIS," == *",$1,"* ]]; }
+if tem_perfil ia && [ -z "$IA_URL" ]; then
+  IA_URL="http://ia:8100"
+fi
+RPA_WEBHOOK=""
+if tem_perfil rpa; then
+  RPA_WEBHOOK="http://n8n:5678/webhook/sonar-ocorrencia"
+  if [ -z "$N8N_CHAVE" ]; then
+    # sem o terraform apply que cria /sonar/n8n/chave: gera uma chave e guarda no disco da EC2
+    # (precisa ser sempre a mesma, porque cifra as credenciais que o n8n guarda)
+    if [ ! -s "$SEGREDOS/n8n_chave" ]; then
+      head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40 >"$SEGREDOS/n8n_chave"
+      chmod 600 "$SEGREDOS/n8n_chave"
+    fi
+    N8N_CHAVE="$(cat "$SEGREDOS/n8n_chave")"
+  fi
+fi
+log "perfis extras: ${PERFIS:-nenhum}"
+
 log "gerando usuários e ACL do Mosquitto"
 aws ssm get-parameters-by-path --path /sonar/mqtt/usuarios --with-decryption \
   --query 'Parameters[].[Name,Value]' --output text >"$TMP/usuarios.tsv"
@@ -107,7 +132,7 @@ case "$TELEGRAM_CHAT_ID" in ''|-[0-9]*|[0-9]*) ;; *) falhar "/sonar/telegram/cha
 
 escrever_env() {
   local conf_mqtt="$1"
-  for par in "DOMINIO:$DOMINIO" "OLHOVIVO:$OLHOVIVO_TOKEN" "IA_URL:$IA_URL" "IA_MODELO:$IA_MODELO" "PERFIS:$PERFIS"; do
+  for par in "DOMINIO:$DOMINIO" "OLHOVIVO:$OLHOVIVO_TOKEN" "IA_URL:$IA_URL" "IA_MODELO:$IA_MODELO" "PERFIS:$PERFIS" "N8N:$N8N_CHAVE"; do
     seguro "${par%%:*}" "${par#*:}"
   done
   cat >"$COMPOSE_DIR/.env" <<EOF
@@ -122,6 +147,7 @@ SONAR_OLHOVIVO_TOKEN='$OLHOVIVO_TOKEN'
 SONAR_TOKEN_SERVICO='$TOKEN_SERVICO'
 SONAR_SAL_HASH='$SAL_HASH'
 SONAR_IA_URL='$IA_URL'
+SONAR_RPA_WEBHOOK_URL='$RPA_WEBHOOK'
 SONAR_IA_MODELO='${IA_MODELO:-qwen2.5:3b}'
 SONAR_GRAFANA_PASSWORD='$GRAFANA_SENHA'
 SONAR_N8N_CHAVE='$N8N_CHAVE'
@@ -176,15 +202,33 @@ elif [ "$CERT_MUDOU" = 1 ]; then
   docker compose restart mqtt
 fi
 
-if [[ ",$PERFIS," == *",rpa,"* ]] && [ -d "$COMPOSE_DIR/../../rpa/n8n" ]; then
-  log "importando os fluxos do n8n (rpa/n8n)"
-  docker compose exec -T n8n n8n import:workflow --separate --input=/workflows >/dev/null || log "AVISO: falha ao importar os fluxos do n8n"
+if tem_perfil rpa && [ -d "$COMPOSE_DIR/../../rpa/n8n" ]; then
+  # o repositório é a fonte da verdade dos fluxos: mudou no editor do n8n, exporte para rpa/n8n
+  log "importando e publicando os fluxos do n8n (rpa/n8n)"
+  for _ in $(seq 1 30); do
+    docker compose exec -T n8n wget -qO- http://127.0.0.1:5678/healthz >/dev/null 2>&1 && break
+    sleep 2
+  done
+  N8N_OK=1
+  docker compose exec -T n8n n8n unpublish:workflow --all >/dev/null 2>&1 || true
+  docker compose exec -T n8n n8n import:workflow --separate --input=/workflows >/dev/null 2>&1 || N8N_OK=0
+  for arquivo in "$COMPOSE_DIR"/../../rpa/n8n/*.json; do
+    ID="$(sed -n 's/^  "id": "\([A-Za-z0-9]*\)",$/\1/p' "$arquivo" | head -n 1)"
+    [ -n "$ID" ] || continue
+    docker compose exec -T n8n n8n publish:workflow --id="$ID" >/dev/null 2>&1 ||
+      docker compose exec -T n8n n8n update:workflow --id="$ID" --active=true >/dev/null 2>&1 || N8N_OK=0
+  done
+  docker compose restart n8n >/dev/null
+  [ "$N8N_OK" = 1 ] || log "AVISO: não consegui importar/publicar algum fluxo do n8n; publique pelo editor (rpa/README.md)"
 fi
 
-if [[ ",$PERFIS," == *",ia,"* ]]; then
+if tem_perfil ia; then
   MODELO="${IA_MODELO:-qwen2.5:3b}"
-  log "baixando o modelo $MODELO no Ollama"
-  docker compose exec -T ollama ollama pull "$MODELO"
+  log "baixando o modelo $MODELO no Ollama (a primeira vez demora alguns minutos)"
+  docker compose exec -T ollama ollama pull "$MODELO" >/dev/null
+  log "carregando o modelo na memória (a primeira pergunta não espera o carregamento)"
+  timeout 180 docker compose exec -T ollama ollama run "$MODELO" "Responda só: ok" >/dev/null 2>&1 ||
+    log "AVISO: o modelo demorou para carregar; a API responde por regras até ele ficar pronto"
 fi
 
 log "conferindo a API"

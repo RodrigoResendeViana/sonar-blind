@@ -63,21 +63,41 @@ def test_repassa_para_o_agente_de_ia(cfg, publicador):
         assert perguntar(cliente, "oi") == resposta_ia
 
 
-def test_resposta_fora_do_contrato_vira_nao_consta(cfg, publicador):
+def test_resposta_fora_do_contrato_cai_para_as_regras(cfg, publicador):
     app = _app_com_ia(cfg, publicador, lambda req: httpx.Response(200, json={"texto": "livre"}))
     with TestClient(app) as cliente:
-        assert perguntar(cliente, "oi")["status"] == "nao_consta"
+        corpo = perguntar(cliente, "oi")
+    assert corpo["status"] == "nao_consta"
+    assert "Não entendi qual linha" in corpo["resposta_falada"]  # resposta das regras, não do agente
 
 
-def test_ia_fora_do_ar_vira_tente_de_novo(cfg, publicador):
+def test_ia_fora_do_ar_responde_pelas_regras(cfg, publicador):
     def responder(requisicao):
         raise httpx.ConnectError("fora", request=requisicao)
 
     app = _app_com_ia(cfg, publicador, responder)
     with TestClient(app) as cliente:
-        corpo = perguntar(cliente, "oi")
-    assert corpo["status"] == "nao_consta"
-    assert "Tente de novo" in corpo["resposta_falada"]
+        corpo = cliente.post("/ia/perguntar", json={"texto": "quando chega a linha DEMO-10?", "parada_id": "demo"}).json()
+    assert corpo["status"] == "ok"
+    assert "DEMO-10" in corpo["resposta_falada"]
+    assert corpo["acao"]["linhas"] == ["DEMO-10"]
+
+
+def test_agente_lento_responde_pelas_regras(cfg, publicador):
+    lento = {"status": "nao_consta", "resposta_falada": "Não consegui responder agora. Tente de novo em instantes."}
+    app = _app_com_ia(cfg, publicador, lambda req: httpx.Response(200, json=lento))
+    with TestClient(app) as cliente:
+        corpo = cliente.post("/ia/perguntar", json={"texto": "linha DEMO-20", "parada_id": "demo"}).json()
+    assert corpo["status"] == "ok"
+    assert "DEMO-20" in corpo["resposta_falada"]
+
+
+def test_nao_consta_do_agente_vale_quando_as_regras_tambem_nao_sabem(cfg, publicador):
+    resposta_ia = {"status": "nao_consta", "resposta_falada": "Eu só ajudo com os ônibus do ponto."}
+    app = _app_com_ia(cfg, publicador, lambda req: httpx.Response(200, json=resposta_ia))
+    with TestClient(app) as cliente:
+        corpo = cliente.post("/ia/perguntar", json={"texto": "me conta uma piada", "parada_id": "demo"}).json()
+    assert corpo["resposta_falada"] == "Eu só ajudo com os ônibus do ponto."
 
 
 def test_limite_de_requisicoes(cfg, publicador):

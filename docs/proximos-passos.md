@@ -6,126 +6,108 @@ O Sonar junta todas as matérias numa só jornada:
 passageiro fala ─▶ IA GENERATIVA entende e acha a linha no Olho Vivo ─▶ "esperar a linha 8000-10"
       ─▶ VISÃO COMPUTACIONAL lê o letreiro de quem chega ─▶ MAKER LAB: o braço segue o letreiro
       ─▶ ônibus certo: LED + bipe "é o seu"      ônibus passou direto: RPA registra a reclamação
-                                                  e o passageiro ouve o protocolo
+                                                  e o passageiro ouve o protocolo em segundos
 ```
 
-O código de cada parte já está no repositório e testado no pipeline. O que falta é, na maior parte,
-trabalho fora do código: dataset, montagem, configuração na AWS, testes reais e evidências.
-Os passos estão em ordem; dentro de cada matéria, a equipe pode trabalhar em paralelo às outras.
+## O que já funciona sem fazer nada além do deploy
 
----
+| Parte | Estado |
+|---|---|
+| App, API, demonstração, monitoramento | no ar |
+| IA generativa | liga sozinha no deploy (Ollama + agente + modelo `qwen2.5:3b`); se o LLM falhar, a API responde por regras |
+| RPA | liga sozinho no deploy (n8n importa e publica o fluxo); a API avisa o robô na hora do "não parou" |
+| Visão computacional | funciona **sem modelo treinado** (só OCR) com letreiro impresso; o modelo YOLO melhora |
+| Maker Lab | firmware pronto e compilando; falta montar e calibrar |
+| Relatórios | rascunhos em `docs/entregas/`, faltam prints e resultados |
 
-## 0. Ligar as peças novas na AWS (Rodrigo)
+## 0. Atualizar a AWS (Rodrigo, ~20 min)
 
-1. **Fazer o merge** do PR `materias → main`. O pipeline publica a imagem nova `sonar-ia` no GHCR.
-2. **Terraform** (CloudShell), para criar a chave do n8n e o usuário MQTT do braço:
+1. **Merge** do PR deste branch na `main`. O pipeline publica as imagens e faz o deploy.
+   - O primeiro deploy demora uns minutos a mais: ele baixa o modelo de IA (~2 GB).
+   - Se falhar ao baixar `sonar-ia` do GHCR: GitHub → *Packages* → `sonar-ia` → *Package settings* →
+     *Change visibility* → **Public**, e *Re-run* no Actions.
+2. **Terraform** (CloudShell) — cria o usuário MQTT do braço e a chave do n8n:
    ```bash
    cd ~/sonar && git pull origin main
    cd infra/terraform/nuvem && export TF_DATA_DIR=/tmp/tf-nuvem
    terraform init -backend-config="bucket=sonar-tfstate-572213224291"
-   terraform apply        # esperado: + /sonar/n8n/chave, + /sonar/mqtt/usuarios/braco-demo
+   terraform apply        # esperado: só criações (braco-demo e /sonar/n8n/chave); nada de destroy na EC2
    ```
-3. **Ligar a IA e o RPA** (Parameter Store):
-   ```bash
-   aws ssm put-parameter --name /sonar/compose/perfis --type String --value ia,rpa --overwrite
-   aws ssm put-parameter --name /sonar/ia/url --type String --value http://ia:8100 --overwrite
-   aws ssm put-parameter --name /sonar/ia/modelo --type String --value qwen2.5:3b --overwrite
-   ```
-4. **Rodar o deploy de novo** (Actions → último run da `main` → *Re-run all jobs*). Ele sobe o
-   Ollama, o agente e o n8n, baixa o modelo (~2 GB, alguns minutos) e importa o fluxo do n8n.
-5. Se o deploy falhar ao baixar `sonar-ia` do GHCR: GitHub → *Packages* → `sonar-ia` →
-   *Package settings* → *Change visibility* → **Public** (igual às outras imagens).
-6. Conferir: `https://sonar.rodrigoviana.app.br/api/readyz` mostra a IA configurada, e no
-   Grafana a memória da EC2 fica abaixo de ~85%.
+   Depois, rode o deploy de novo (Actions → *Re-run all jobs*) para a ACL do MQTT incluir o braço.
+3. **Token do Olho Vivo** (para linhas reais; sem ele, tudo funciona com a demonstração):
+   `aws ssm put-parameter --name /sonar/olhovivo/token --type SecureString --value <token> --overwrite`
+4. **Conferir**:
+   - No app, ponto de demonstração, perguntar por voz "qual ônibus vai para o centro?".
+   - Demonstração "não parou" → aceitar registrar → o app fala o protocolo `SIM-...` em segundos.
+   - No Grafana, a memória da EC2 abaixo de ~85%.
 
-## 1. Visão computacional (ler o letreiro)
+Para desligar IA e RPA (economizar memória): `aws ssm put-parameter --name /sonar/compose/perfis
+--type String --value nenhum --overwrite` e deploy.
 
-Código pronto: `edge/` (YOLO + OCR + votação em 3 quadros, publica a linha lida e a posição
-do letreiro) e `visao/` (treino). Falta o modelo.
+## 1. Visão computacional
 
-1. **Montar o dataset**: 150 a 300 imagens de letreiros de ônibus de SP (fotos na rua,
-   *frames* de vídeos, letreiros impressos para a maquete). Variar luz, distância e ângulo.
-2. **Rotular** no Roboflow (classe única `letreiro`) e exportar no formato YOLOv8/YOLO11
-   (treino/validação/teste ≈ 70/20/10). Borrar rostos e placas antes (LGPD).
-3. **Treinar**: `cd visao && python treinar.py --dados dados/letreiros.yaml --epocas 50`
-   (no Colab com GPU, se o notebook for lento). Copiar o `best.pt` para `edge/modelos/letreiro.pt`.
-4. **Testar na webcam**:
-   `python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 --modo webcam --modelo modelos/letreiro.pt --mirar-sempre`
-5. **Medir**: mAP50, precisão e revocação do conjunto de teste; e a taxa de acerto da linha lida
-   ponta a ponta (YOLO + OCR + votação) em 20 passagens de letreiros impressos.
-6. **Evidências**: gráficos do treino, matriz de confusão, tabela de métricas, vídeo da leitura.
+Detalhes: `visao/README.md`.
 
-## 2. IA generativa (entender a voz e achar o ônibus)
+1. **Imprimir os letreiros** da maquete: `cd visao && pip install -r requirements.txt && python imprimir.py`.
+2. **Testar sem modelo** no notebook (Windows): `cd edge && .\iniciar.ps1` e mexer o letreiro na
+   frente da webcam. A janela mostra o que foi lido.
+3. **Treinar com o sintético** (Colab com GPU): `python sintetico.py --quantidade 1500` e
+   `python treinar.py`. Copiar `edge/modelos/letreiro.pt` para o notebook.
+4. **Fotos reais** (150–300), rostos e placas borrados, rotuladas no Roboflow (classe `letreiro`), e
+   treinar de novo juntando: `python treinar.py --dados dados/sintetico/letreiros.yaml dados/roboflow/data.yaml`.
+5. **Medir**: métricas do `treinar.py` (sintético × sintético + reais) e 20 passagens na maquete
+   (só OCR × YOLO). Preencher `docs/entregas/visao-computacional.md`.
 
-Código pronto: `ia/` (agente com LLM local no Ollama e ferramentas `buscar_linha` e
-`previsao_parada`, que leem o Olho Vivo pela API) e a voz no app (Web Speech API).
+## 2. IA generativa
 
-1. **Token do Olho Vivo** (se ainda não tiver): cadastro em sptrans.com.br/desenvolvedores, e
-   `aws ssm put-parameter --name /sonar/olhovivo/token --type SecureString --value <token> --overwrite`.
-2. **Testar pelo app**: no ponto de demonstração, perguntar por voz "quando chega a DEMO-10?" e
-   "qual ônibus vai para a Lapa?".
-3. **Montar o conjunto de avaliação**: 15 a 20 perguntas com a resposta esperada: linha certa,
-   destino, linha que não passa no ponto, pergunta fora do assunto, pergunta ambígua.
-4. **Medir** acerto e latência (`sonar_ia_latencia_segundos` no Grafana). Se ficar lento, testar
-   `qwen2.5:1.5b`; se errar muito, ajustar o texto de `INSTRUCOES` em `ia/sonar_ia/agente.py`.
-5. **Evidências**: tabela da avaliação, prints das respostas, o caso em que o modelo inventaria
-   e o guarda-corpo devolve `nao_consta`, e a explicação do *tool calling* (README de `ia/`).
+Detalhes: `ia/README.md`.
 
-## 3. RPA (registrar a reclamação automaticamente)
+1. Perguntar pelo app (voz) algumas vezes para "aquecer" e ver se responde rápido.
+2. **Avaliar**: `cd ia && pip install httpx && python avaliar.py` (e `--com-olhovivo` com o token).
+   Gera `ia/avaliacao/resultado.md`, a tabela do relatório.
+3. Opcional: comparar `qwen2.5:3b` e `qwen2.5:1.5b` (parâmetro `/sonar/ia/modelo`) em acerto e tempo.
+4. Prints: app respondendo, tabela da avaliação, Grafana (`sonar_ia_respostas_total` por modo).
+   Preencher `docs/entregas/ia-generativa.md`.
 
-Código pronto: fluxo do n8n em `rpa/n8n/ocorrencias.json`, importado pelo deploy.
+## 3. RPA
 
-1. **Abrir o n8n** pelo túnel do SSM (comando em `terraform output abrir_o_n8n`; precisa do AWS
-   CLI e do Session Manager plugin no seu computador) e acessar http://localhost:5678.
-2. Criar o usuário dono, abrir o fluxo **"Sonar - ocorrências de ônibus que não parou"** e ativá-lo.
-3. **Teste ponta a ponta**: no app, demonstração "não parou" → aceitar registrar → no n8n,
-   *Rodar agora (demo)* → o app fala o protocolo `SIM-...`.
-4. **Evoluir o canal**: trocar o nó "Conferir e registrar" (simulado) por um **Send Email** para a
-   ouvidoria (pode ser um e-mail da equipe, para a demo) e acrescentar **Telegram** e
-   **Google Sheets** (histórico das reclamações).
-5. Exportar o fluxo final (menu ⋯ → *Download*) para `rpa/n8n/ocorrencias.json` e abrir PR.
-6. **Evidências**: print do fluxo, execuções com sucesso e com `inconclusiva`, e o e-mail/Telegram.
+Detalhes: `rpa/README.md`.
 
-## 4. Maker Lab (braço que segue o letreiro)
+1. Testar o "não parou" pelo app (passo 0.4).
+2. **Abrir o editor** do n8n pelo túnel do SSM (comando em `terraform output abrir_o_n8n`; precisa do
+   AWS CLI e do Session Manager plugin no **seu** computador) para os prints das execuções.
+3. Evoluir o canal (opcional para a nota, bom para o vídeo): e-mail para a ouvidoria (pode ser um
+   e-mail da equipe), Telegram e Google Sheets. Exportar o fluxo para `rpa/n8n/` e abrir PR.
+4. Preencher `docs/entregas/rpa.md`.
 
-Código pronto: firmware `firmware/src/braco/` (cabeça pan-tilt), simulação
-`firmware/wokwi/braco/` e a posição do letreiro publicada pela visão em `sonar/parada/demo/mira`.
+## 4. Maker Lab
 
-1. **Comprar/separar**: ESP32 DevKit, 2 servos SG90 ou MG90S, suporte pan-tilt, fonte 5 V / 2 A,
-   potenciômetro 10 kΩ (opcional), jumpers, protoboard e uma webcam USB.
-2. **Simular no Wokwi**: `pio run -e braco_wokwi`, abrir `wokwi/braco/diagram.json` e girar o
-   potenciômetro (modo manual). Gravar a tela como primeira evidência.
-3. **Montar**: servos nos GPIO 18 (pan) e 19 (tilt), V+ dos servos na **fonte externa**, GND
-   comum com o ESP32; prender a webcam na cabeça. Ligações em `firmware/README.md`.
-4. **Gravar**: copiar `include/secrets.example.h` para `include/secrets.h`, preencher o Wi-Fi e a
-   senha do `braco-demo` (`aws ssm get-parameter --name /sonar/mqtt/usuarios/braco-demo --with-decryption ...`)
-   e rodar `pio run -e braco -t upload`.
-5. **Testar sem visão**: `python -m sonar_camera --parada demo --linhas DEMO-10 --mirar-sempre` e
-   digitar `DEMO-10@0.1`, `DEMO-10@0.9`: a cabeça vira para os lados.
-6. **Testar com visão**: mesmo comando com `--modo webcam`, mover um letreiro impresso na frente
-   da câmera e ajustar `GANHO_PAN`, `ZONA_MORTA` e `VELOCIDADE_MAX` em `include/config.h` até
-   seguir sem tremer.
-7. **Maquete**: ponto de ônibus com o Sonar Ponto (ultrassom, LED, buzzer) e o braço; um "ônibus"
-   de papelão com o letreiro impresso passando na frente.
-8. **Evidências**: esquema elétrico, lista de materiais com custo, fotos da montagem, vídeo do Wokwi
-   e vídeo do braço seguindo o letreiro.
+Passo a passo completo (material, montagem, gravação, calibração, testes): `docs/maker-lab.md`.
+
+1. Separar/comprar o material (ESP32, 2 servos + suporte pan-tilt, fonte 5 V, webcam, HC-SR04,
+   LED, buzzer, botão, OLED).
+2. Simular no Wokwi (braço, ponto e bordo) e gravar a tela.
+3. Montar, gravar o firmware (`secrets.h` com Wi-Fi e senhas do Parameter Store) e calibrar o braço
+   com `.\iniciar.ps1 -Braco`.
+4. Montar a maquete (ponto, ônibus de papelão com o letreiro impresso).
+5. Preencher `docs/entregas/maker-lab.md`.
 
 ## 5. Juntar tudo na demonstração
 
 Roteiro do vídeo final (2 a 3 minutos):
 
 1. O passageiro abre o app no ponto e pergunta por voz qual ônibus vai para o destino (**IA**).
-2. Pede para esperar a linha; o LED do ponto pisca para o motorista e o bipper avisa (**Maker Lab**).
+2. Pede para esperar a linha; o LED do ponto pisca e o bipper do motorista toca (**Maker Lab**).
 3. O "ônibus" chega; o braço gira e segue o letreiro, a câmera lê a linha (**Visão + Maker Lab**).
 4. Primeira passagem: outra linha → o app diz "não é o seu".
 5. Segunda passagem: a linha certa passa direto → o app pergunta se registra a reclamação →
-   o n8n registra e o passageiro ouve o protocolo (**RPA**).
+   segundos depois o passageiro ouve o protocolo (**RPA**).
 6. Fechar no Grafana e no pipeline verde (**Secure DevOps**).
 
 ## 6. Fechar as entregas
 
-Para cada matéria: um PDF com problema, solução, arquitetura (a parte daquela matéria no
-diagrama geral), como testar, evidências e o link do repositório e do vídeo.
+Rascunhos em `docs/entregas/`: trocar `[PRINT: ...]` e `[PREENCHER: ...]`, revisar contra o
+enunciado de cada matéria e exportar para PDF.
 
 ## Depois
 

@@ -1,0 +1,3 @@
+# treino do YOLO (no Colab com GPU, ou no notebook com paciência)
+-r requirements.txt
+ultralytics
