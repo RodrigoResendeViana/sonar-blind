@@ -1,409 +1,298 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { useAnuncio } from '../anuncio'
-import { api, mensagemDeErro, ouvirEventos, type Espera, type EventoEspera, type Parada, type RespostaIA } from '../api'
-import { interpretarComando, type Comando } from '../comandos'
-import { manterTelaLigada, ouvirFrase, reconhecimentoDisponivel, vibrar } from '../voz'
+import {
+  api,
+  mensagemDeErro,
+  ouvirEventos,
+  type CenarioDemo,
+  type EventoEspera,
+  type PedidoConversa,
+  type RespostaConversa,
+} from '../api'
+import { manterTelaLigada, ouvirFrase, prepararSom, reconhecimentoDisponivel, vibrar } from '../voz'
 
-type Origem = 'voz' | 'toque'
+const CHAVE_SESSAO = 'sonar.conversa'
+const CHAVE_CENARIO = 'sonar.cenario-demo'
+// eventos da espera que a própria conversa já falou (não repete)
+const FALADOS_PELA_CONVERSA = new Set(['ponto_ativado', 'embarque_confirmado', 'ocorrencia_registrada', 'localizar', 'cancelada'])
+const RESINCRONIZAM = new Set(['expirada', 'embarque_confirmado'])
 
-const TERMINAIS = new Set(['embarcou', 'nao_parou', 'cancelada', 'expirada'])
-const OCORRENCIA_FECHADA = new Set(['enviada', 'inconclusiva', 'duplicada', 'erro', 'anonima', 'descartada'])
-const PEDEM_CONSENTIMENTO = new Set(['onibus_passou_direto', 'perguntar_parou'])
-const ATUALIZAM_ESPERA = new Set([
-  'embarque_confirmado',
-  'ocorrencia_registrada',
-  'ocorrencia_protocolo',
-  'ocorrencia_inconclusiva',
-  'cancelada',
-  'expirada',
-  'aviso_enviado',
-  'motorista_ciente',
-  'onibus_chegando',
-  'onibus_passou_direto',
-])
+type Fase = 'parado' | 'ouvindo' | 'pensando'
+type Posicao = { lat: number; lon: number }
 
-const RESUMO_FINAL: Record<string, string> = {
-  embarcou: 'Embarque registrado. Boa viagem!',
-  nao_parou: 'Você registrou que o ônibus não parou.',
-  cancelada: 'Espera cancelada.',
-  expirada: 'A espera terminou por tempo.',
+const ROTULO_FASE: Record<Fase, string> = {
+  parado: 'Toque para falar',
+  ouvindo: 'Ouvindo… fale agora',
+  pensando: 'Pensando…',
 }
 
-function streamEncerrado(espera: Espera): boolean {
-  if (!TERMINAIS.has(espera.status)) return false
-  if (espera.status !== 'nao_parou') return true
-  return !espera.ocorrencia || OCORRENCIA_FECHADA.has(espera.ocorrencia.status)
+function lerArmazenado(chave: string, armazenamento: () => Storage): string | null {
+  try {
+    return armazenamento().getItem(chave)
+  } catch {
+    return null
+  }
 }
 
-function hora(iso?: string): string {
-  return iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
+function gravar(chave: string, valor: string, armazenamento: () => Storage): void {
+  try {
+    armazenamento().setItem(chave, valor)
+  } catch {
+    // sem armazenamento: vale só enquanto a tela estiver aberta
+  }
 }
 
+function pegarPosicao(): Promise<Posicao | null> {
+  if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return Promise.resolve(null)
+  return new Promise((resolver) => {
+    navigator.geolocation.getCurrentPosition(
+      (local) => resolver({ lat: local.coords.latitude, lon: local.coords.longitude }),
+      () => resolver(null),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 20000 },
+    )
+  })
+}
+
+/**
+ * O app inteiro é um botão: a pessoa toca, diz para onde vai, e o Sonar conduz a viagem
+ * falando (pelo leitor de tela ou pela voz do navegador). A localização fica só na memória
+ * do app e vai para o servidor apenas para planejar e avisar a hora de descer.
+ */
 export default function Passageiro() {
   const { anunciar, vozAlta, setVozAlta } = useAnuncio()
-  const [paradas, setParadas] = useState<Parada[]>([])
-  const [paradaId, setParadaId] = useState('demo')
-  const [posicao, setPosicao] = useState<{ lat: number; lon: number } | null>(null)
+  const [resposta, setResposta] = useState<RespostaConversa | null>(null)
+  const [fala, setFala] = useState('Toque no botão e diga para onde você quer ir.')
+  const [fase, setFase] = useState<Fase>('parado')
   const [texto, setTexto] = useState('')
-  const [resposta, setResposta] = useState<RespostaIA | null>(null)
-  const [espera, setEspera] = useState<Espera | null>(null)
-  const [historico, setHistorico] = useState<EventoEspera[]>([])
-  const [status, setStatus] = useState('Diga ou digite a linha que você quer pegar.')
-  const [pedirConsentimento, setPedirConsentimento] = useState(false)
-  const [ocupado, setOcupado] = useState(false)
-  const [ouvindo, setOuvindo] = useState(false)
+  const [cenario, setCenario] = useState<CenarioDemo>(
+    () => (lerArmazenado(CHAVE_CENARIO, () => localStorage) as CenarioDemo | null) ?? 'auto',
+  )
+  const sessao = useRef<string | null>(lerArmazenado(CHAVE_SESSAO, () => sessionStorage))
+  const posicao = useRef<Posicao | null>(null)
+  const ocupado = useRef(false)
+  const campoTexto = useRef<HTMLInputElement>(null)
   const temVoz = reconhecimentoDisponivel()
-  const tituloEspera = useRef<HTMLHeadingElement>(null)
-  const regiaoConsentimento = useRef<HTMLElement>(null)
 
   const dizer = useCallback(
-    (fala: string) => {
-      setStatus(fala)
-      anunciar(fala)
+    (frase: string) => {
+      if (!frase) return
+      setFala(frase)
+      anunciar(frase)
     },
     [anunciar],
   )
 
+  const enviar = useCallback(
+    async (pedido: Omit<PedidoConversa, 'sessao' | 'cenario_demo'>, tentarLocalizacao = true): Promise<void> => {
+      const corpo: PedidoConversa = {
+        ...pedido,
+        sessao: sessao.current,
+        cenario_demo: cenario,
+        ...(posicao.current ?? {}),
+      }
+      const recebida = await api.conversar(corpo)
+      sessao.current = recebida.sessao
+      gravar(CHAVE_SESSAO, recebida.sessao, () => sessionStorage)
+      setResposta(recebida)
+      if (recebida.fala) dizer(recebida.fala)
+      if (recebida.pedir_localizacao && recebida.repetir_texto && tentarLocalizacao) {
+        const local = await pegarPosicao()
+        if (local) {
+          posicao.current = local
+          await enviar({ evento: 'fala', texto: recebida.repetir_texto }, false)
+        } else {
+          dizer('Não consegui sua localização. Confira se ela está ligada e permitida para o Sonar.')
+        }
+      }
+    },
+    [cenario, dizer],
+  )
+
+  const enviarSeLivre = useCallback(
+    async (pedido: Omit<PedidoConversa, 'sessao' | 'cenario_demo'>) => {
+      if (ocupado.current) return
+      ocupado.current = true
+      try {
+        await enviar(pedido)
+      } catch (erro) {
+        if (pedido.evento === 'fala' || pedido.evento === 'abrir') dizer(mensagemDeErro(erro))
+      } finally {
+        ocupado.current = false
+      }
+    },
+    [enviar, dizer],
+  )
+
+  // primeira fala: saudação (ou "continuando" se a sessão já existia)
   useEffect(() => {
-    let ativo = true
-    api
-      .paradas()
-      .then((lista) => {
-        if (!ativo) return
-        setParadas(lista)
-        setParadaId((atual) => (lista.some((p) => p.id === atual) ? atual : (lista[0]?.id ?? atual)))
-      })
-      .catch(() => dizer('Não consegui carregar os pontos. Confira a internet.'))
-    return () => {
-      ativo = false
+    void enviarSeLivre({ evento: 'abrir' })
+    // só ao abrir a tela
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // a caminho do ponto e dentro do ônibus: GPS e um "tique" para os avisos (chegou, desça agora)
+  const acompanhar = resposta?.acompanhar ?? false
+  const intervalo = (resposta?.intervalo_s ?? 10) * 1000
+  useEffect(() => {
+    if (!acompanhar) return
+    let observador: number | undefined
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      observador = navigator.geolocation.watchPosition(
+        (local) => {
+          posicao.current = { lat: local.coords.latitude, lon: local.coords.longitude }
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 },
+      )
     }
-  }, [dizer])
+    const relogio = window.setInterval(() => {
+      void enviarSeLivre({ evento: posicao.current ? 'posicao' : 'tick' })
+    }, intervalo)
+    return () => {
+      window.clearInterval(relogio)
+      if (observador !== undefined) navigator.geolocation.clearWatch(observador)
+    }
+  }, [acompanhar, intervalo, enviarSeLivre])
 
-  const esperaId = espera?.id
-  const aguardando = espera?.status === 'aguardando'
-
-  // eventos da espera em tempo real (SSE)
+  // no ponto: os avisos do ônibus chegam em tempo real (SSE)
+  const esperaId = resposta?.espera_id ?? null
   useEffect(() => {
     if (!esperaId) return
-    let fechar = () => {}
-    fechar = ouvirEventos(`/esperas/${esperaId}/eventos`, (evento) => {
-      if (evento.tipo === 'estado') {
-        setEspera(evento.dados as unknown as Espera)
-        return
-      }
-      setHistorico((anterior) =>
-        evento.id !== undefined && anterior.some((item) => item.id === evento.id) ? anterior : [...anterior, evento],
-      )
-      if (evento.fala) dizer(evento.fala)
+    return ouvirEventos(`/esperas/${esperaId}/eventos`, (evento: EventoEspera) => {
+      if (evento.tipo === 'estado') return
+      if (evento.fala && !FALADOS_PELA_CONVERSA.has(evento.tipo)) dizer(evento.fala)
       if (typeof evento.dados?.vibrar === 'string') vibrar(evento.dados.vibrar)
-      if (PEDEM_CONSENTIMENTO.has(evento.tipo)) setPedirConsentimento(true)
-      if (evento.tipo === 'previsao' && typeof evento.dados?.minutos === 'number') {
-        const dados = evento.dados as unknown as NonNullable<Espera['previsao']>
-        setEspera((atual) => (atual ? { ...atual, previsao: dados } : atual))
-      }
-      if (ATUALIZAM_ESPERA.has(evento.tipo)) {
-        api
-          .espera(esperaId)
-          .then((atual) => {
-            setEspera(atual)
-            if (streamEncerrado(atual)) fechar()
-          })
-          .catch(() => {})
-      }
+      if (RESINCRONIZAM.has(evento.tipo)) void enviarSeLivre({ evento: 'tick' })
     })
-    return () => fechar()
-  }, [esperaId, dizer])
+  }, [esperaId, dizer, enviarSeLivre])
 
-  useEffect(() => (aguardando ? manterTelaLigada() : undefined), [aguardando])
+  const emViagem = resposta !== null && resposta.estado !== 'inicio' && resposta.estado !== 'chegou'
+  useEffect(() => (emViagem ? manterTelaLigada() : undefined), [emViagem])
 
-  const statusEspera = espera?.status
-  useEffect(() => {
-    if (esperaId) tituloEspera.current?.focus()
-  }, [esperaId, statusEspera])
-
-  useEffect(() => {
-    if (pedirConsentimento) regiaoConsentimento.current?.focus()
-  }, [pedirConsentimento])
-
-  async function executar<T>(acao: () => Promise<T>): Promise<T | undefined> {
-    setOcupado(true)
-    try {
-      return await acao()
-    } catch (erro) {
-      dizer(mensagemDeErro(erro))
-      return undefined
-    } finally {
-      setOcupado(false)
-    }
-  }
-
-  async function comandar(comando: Comando, origem: Origem) {
-    if (!espera) return
-    if (comando === 'embarquei') {
-      const atual = await executar(() => api.embarque(espera.id, origem))
-      if (atual) setEspera(atual)
-    } else if (comando === 'nao_parou') {
-      setPedirConsentimento(true)
-    } else if (comando === 'cancelar') {
-      const atual = await executar(() => api.cancelar(espera.id))
-      if (atual) setEspera(atual)
-    } else {
-      await executar(() => api.localizar(espera.id))
-    }
-  }
-
-  async function perguntar(frase: string, origem: Origem) {
-    const limpa = frase.trim()
-    if (!limpa) return
-    if (aguardando) {
-      const comando = interpretarComando(limpa)
-      if (comando) {
-        await comandar(comando, origem)
-        return
-      }
-    }
-    const recebida = await executar(() => api.perguntar(limpa, paradaId))
-    if (recebida) {
-      setResposta(recebida)
-      dizer(recebida.resposta_falada)
-    }
-  }
-
-  async function falar() {
-    setOuvindo(true)
-    try {
-      const frase = await ouvirFrase()
-      setTexto(frase)
-      if (frase) await perguntar(frase, 'voz')
-      else dizer('Não ouvi nada. Tente de novo ou digite.')
-    } catch {
-      dizer('Não consegui ouvir. Tente de novo ou digite.')
-    } finally {
-      setOuvindo(false)
-    }
-  }
-
-  function enviar(evento: FormEvent) {
-    evento.preventDefault()
-    void perguntar(texto, 'toque')
-  }
-
-  function usarLocalizacao() {
-    if (!('geolocation' in navigator)) {
-      dizer('Este aparelho não informa a localização. Escolha o ponto na lista.')
+  async function aoTocar() {
+    prepararSom()
+    if (fase !== 'parado') return
+    if (!temVoz) {
+      dizer('Este navegador não reconhece voz. Escreva no campo abaixo do botão, ou use o ditado do teclado.')
+      campoTexto.current?.focus()
       return
     }
-    navigator.geolocation.getCurrentPosition(
-      async (local) => {
-        const atual = { lat: local.coords.latitude, lon: local.coords.longitude }
-        setPosicao(atual) // fica só na memória do app
-        const proxima = await executar(() => api.paradaProxima(atual.lat, atual.lon))
-        if (proxima) {
-          setParadaId(proxima.parada.id)
-          dizer(`Ponto mais perto: ${proxima.parada.nome}, a ${proxima.distancia_m} metros.`)
-        }
-      },
-      () => dizer('Não consegui sua localização. Escolha o ponto na lista.'),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-    )
-  }
-
-  function comecar(nova: Espera) {
-    setHistorico([])
-    setPedirConsentimento(false)
-    setResposta(null)
-    setEspera(nova)
-  }
-
-  async function cheguei(linhas: string[], origem: Origem) {
-    const nova = await executar(() =>
-      api.criarEspera({ parada_id: paradaId, linhas, origem, ...(posicao ?? {}) }),
-    )
-    if (nova) comecar(nova)
-  }
-
-  async function demonstracao(cenario: 'embarque' | 'nao_parou' | 'maquete') {
-    const nova = await executar(() => api.iniciarDemo(cenario))
-    if (nova) {
-      setParadaId('demo')
-      comecar(nova)
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+    vibrar('curta') // "pode falar"
+    setFase('ouvindo')
+    try {
+      const frase = await ouvirFrase()
+      if (!frase) {
+        dizer('Não ouvi nada. Toque e fale de novo.')
+        return
+      }
+      setFase('pensando')
+      await enviarSeLivre({ evento: 'fala', texto: frase })
+    } catch {
+      dizer('Não consegui ouvir. Toque e fale de novo.')
+    } finally {
+      setFase('parado')
     }
   }
 
-  async function responderConsentimento(consentimento: boolean) {
-    if (!espera) return
-    const atual = await executar(() => api.naoParou(espera.id, consentimento))
-    if (atual) {
-      setEspera(atual)
-      setPedirConsentimento(false)
-    }
+  async function escrever(evento: FormEvent) {
+    evento.preventDefault()
+    const frase = texto.trim()
+    if (!frase) return
+    setTexto('')
+    setFase('pensando')
+    await enviarSeLivre({ evento: 'fala', texto: frase })
+    setFase('parado')
   }
 
-  const linhasSugeridas = resposta?.acao?.tipo === 'esperar' ? (resposta.acao.linhas ?? []) : []
-  const parada = paradas.find((p) => p.id === paradaId)
+  function mudarCenario(valor: CenarioDemo) {
+    setCenario(valor)
+    gravar(CHAVE_CENARIO, valor, () => localStorage)
+  }
 
+  const formulario = (
+    <form onSubmit={escrever} className="escrever">
+      <label htmlFor="frase">Escrever em vez de falar</label>
+      <input
+        id="frase"
+        ref={campoTexto}
+        type="text"
+        value={texto}
+        onChange={(evento) => setTexto(evento.target.value)}
+        placeholder="Ex.: quero ir para o centro"
+        autoComplete="off"
+        enterKeyHint="send"
+      />
+      <button type="submit" disabled={fase !== 'parado' || !texto.trim()}>
+        Enviar
+      </button>
+    </form>
+  )
+
+  const plano = resposta?.plano
   return (
     <>
       <h1 className="titulo" tabIndex={-1}>
         Sonar
       </h1>
       <p className="status" data-testid="status">
-        {status}
+        {fala}
       </p>
 
-      {espera && aguardando ? (
-        <section aria-labelledby="titulo-espera">
-          <h2 id="titulo-espera" ref={tituloEspera} tabIndex={-1}>
-            Esperando {espera.linhas.join(' ou ')} no ponto {espera.parada_nome}
+      <button
+        type="button"
+        className={`microfone ${fase}`}
+        onClick={aoTocar}
+        aria-busy={fase === 'pensando'}
+        aria-describedby="dica-microfone"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z" />
+        </svg>
+        <span>{ROTULO_FASE[fase]}</span>
+      </button>
+      <p id="dica-microfone" className="nota">
+        Diga para onde você quer ir. Depois: cheguei, quanto falta, embarquei, quero reclamar, repete ou ajuda.
+      </p>
+
+      {!temVoz && formulario}
+
+      {plano && (
+        <section aria-labelledby="titulo-plano" className="plano">
+          <h2 id="titulo-plano">
+            {resposta?.demo ? 'Plano (demonstração)' : 'Plano'}: {resposta?.destino}
           </h2>
-          {espera.demo && <p className="aviso-demo">Modo demonstração: dados de exemplo.</p>}
-          <ul className="resumo">
-            {espera.previsao && (
-              <li>
-                Linha {espera.previsao.linha}: {espera.previsao.minutos <= 0 ? 'chegando' : `${espera.previsao.minutos} min`}
+          <ol>
+            {plano.trechos.map((trecho, indice) => (
+              <li key={`${trecho.linha}-${indice}`} aria-current={indice === resposta?.trecho ? 'step' : undefined}>
+                <strong>{trecho.linha}</strong> de {trecho.embarque.nome} até {trecho.desembarque.nome} ({trecho.paradas}{' '}
+                {trecho.paradas === 1 ? 'parada' : 'paradas'})
               </li>
-            )}
-            <li>
-              Motorista:{' '}
-              {espera.aviso ? (espera.aviso.ciente_em ? 'avisado e confirmou' : 'sendo avisado') : 'será avisado 2 paradas antes'}
-            </li>
-          </ul>
-
-          {pedirConsentimento && (
-            <section className="pergunta" aria-labelledby="titulo-consentimento" ref={regiaoConsentimento} tabIndex={-1}>
-              <h2 id="titulo-consentimento">O ônibus não parou?</h2>
-              <p>
-                Posso enviar uma reclamação ao SP156 com as evidências do ponto. Ela não leva seu nome: o Sonar não sabe
-                quem você é.
-              </p>
-              <div className="botoes">
-                <button type="button" className="primario" disabled={ocupado} onClick={() => responderConsentimento(true)}>
-                  Sim, enviar a reclamação
-                </button>
-                <button type="button" disabled={ocupado} onClick={() => responderConsentimento(false)}>
-                  Não, só registrar
-                </button>
-                <button type="button" disabled={ocupado} onClick={() => setPedirConsentimento(false)}>
-                  Voltar
-                </button>
-              </div>
-            </section>
-          )}
-
-          <div className="botoes">
-            <button type="button" className="primario" disabled={ocupado} onClick={() => comandar('embarquei', 'toque')}>
-              Embarquei
-            </button>
-            <button type="button" disabled={ocupado} onClick={() => comandar('nao_parou', 'toque')}>
-              O ônibus não parou
-            </button>
-            <button type="button" disabled={ocupado} onClick={() => comandar('localizar', 'toque')}>
-              Onde fica o poste? (bip)
-            </button>
-            {temVoz && (
-              <button type="button" disabled={ocupado || ouvindo} onClick={falar}>
-                {ouvindo ? 'Ouvindo…' : 'Falar um comando'}
-              </button>
-            )}
-            <button type="button" disabled={ocupado} onClick={() => comandar('cancelar', 'toque')}>
-              Cancelar espera
-            </button>
-          </div>
-
-          <h2>O que aconteceu</h2>
-          <ol className="historico">
-            {historico
-              .filter((evento) => evento.fala)
-              .map((evento, indice) => (
-                <li key={evento.id ?? indice}>
-                  <span className="hora">{hora(evento.em)}</span> {evento.fala}
-                </li>
-              ))}
+            ))}
           </ol>
+          <p className="nota">Uns {plano.minutos_estimados} minutos no total.</p>
         </section>
-      ) : (
-        <>
-          {espera && (
-            <section aria-labelledby="titulo-fim" className="fim">
-              <h2 id="titulo-fim" ref={tituloEspera} tabIndex={-1}>
-                {RESUMO_FINAL[espera.status] ?? 'Espera encerrada.'}
-              </h2>
-              {espera.ocorrencia?.protocolo && <p>Protocolo da reclamação: {espera.ocorrencia.protocolo}</p>}
-              {espera.ocorrencia?.status === 'pendente' && <p>Aguardando o protocolo da reclamação.</p>}
-              <button type="button" disabled={ocupado} onClick={() => cheguei(espera.linhas, 'toque')}>
-                Esperar de novo {espera.linhas.join(' ou ')}
-              </button>
-            </section>
-          )}
-
-          <section aria-labelledby="titulo-pergunta">
-            <h2 id="titulo-pergunta">Para onde você vai?</h2>
-            <label htmlFor="parada">Ponto de ônibus</label>
-            <select id="parada" value={paradaId} onChange={(evento) => setParadaId(evento.target.value)}>
-              {paradas.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </select>
-            <button type="button" disabled={ocupado} onClick={usarLocalizacao}>
-              Usar minha localização
-            </button>
-
-            {temVoz && (
-              <button type="button" className="primario" disabled={ocupado || ouvindo} onClick={falar}>
-                {ouvindo ? 'Ouvindo…' : 'Falar'}
-              </button>
-            )}
-            <form onSubmit={enviar}>
-              <label htmlFor="pergunta">Linha ou destino</label>
-              <input
-                id="pergunta"
-                type="text"
-                value={texto}
-                onChange={(evento) => setTexto(evento.target.value)}
-                placeholder={parada?.linhas[0] ? `Ex.: linha ${parada.linhas[0].codigo}` : 'Ex.: linha 8000-10'}
-                autoComplete="off"
-                enterKeyHint="send"
-              />
-              <button type="submit" disabled={ocupado || !texto.trim()}>
-                Perguntar
-              </button>
-            </form>
-
-            {linhasSugeridas.length > 0 && (
-              <button type="button" className="primario" disabled={ocupado} onClick={() => cheguei(linhasSugeridas, 'toque')}>
-                Cheguei ao ponto: esperar {linhasSugeridas.join(' ou ')}
-              </button>
-            )}
-          </section>
-
-          <section aria-labelledby="titulo-demo">
-            <h2 id="titulo-demo">Modo demonstração</h2>
-            <p>Roda a jornada inteira com dados de exemplo, em cerca de 2 minutos.</p>
-            <div className="botoes">
-              <button type="button" disabled={ocupado} onClick={() => demonstracao('embarque')}>
-                Ver a jornada completa
-              </button>
-              <button type="button" disabled={ocupado} onClick={() => demonstracao('nao_parou')}>
-                Ver um ônibus que não para
-              </button>
-              <button type="button" disabled={ocupado} onClick={() => demonstracao('maquete')}>
-                Usar a maquete (Sonar Ponto e Sonar Bordo de verdade)
-              </button>
-            </div>
-          </section>
-        </>
       )}
 
-      <section aria-labelledby="titulo-ajustes">
-        <h2 id="titulo-ajustes">Ajustes</h2>
+      <details className="mais">
+        <summary>Mais opções</summary>
+        {temVoz && formulario}
         <label className="opcao">
           <input type="checkbox" checked={vozAlta} onChange={(evento) => setVozAlta(evento.target.checked)} />
           Ler as respostas em voz alta (para quem não usa leitor de tela)
         </label>
-      </section>
+        <label htmlFor="cenario">Demonstração: o que o ônibus faz</label>
+        <select id="cenario" value={cenario} onChange={(evento) => mudarCenario(evento.target.value as CenarioDemo)}>
+          <option value="auto">Automático (maquete, se estiver ligada)</option>
+          <option value="embarque">O ônibus para</option>
+          <option value="nao_parou">O ônibus passa direto</option>
+          <option value="maquete">Só a maquete (câmera e Sonar Ponto de verdade)</option>
+        </select>
+        <button type="button" onClick={() => void enviarSeLivre({ evento: 'fala', texto: 'cancelar' })}>
+          Recomeçar
+        </button>
+      </details>
     </>
   )
 }

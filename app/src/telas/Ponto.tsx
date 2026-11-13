@@ -63,6 +63,19 @@ export default function Ponto() {
     }
   }
 
+  async function apertarBotao() {
+    try {
+      const resultado = await api.botao(paradaId)
+      setMensagem(
+        resultado.espera
+          ? `Botão apertado: motoristas das linhas ${resultado.espera.linhas.join(', ')} avisados por 10 minutos.`
+          : 'Este ponto não tem linhas cadastradas.',
+      )
+    } catch (erro) {
+      setMensagem(mensagemDeErro(erro))
+    }
+  }
+
   return (
     <>
       <h1 className="titulo" tabIndex={-1}>
@@ -118,6 +131,9 @@ export default function Ponto() {
         </button>
         <button type="button" onClick={() => detectar({ linha_lida: null, tempo_parado_s: 9, camera_ok: false }, 'Ônibus sem leitura da câmera')}>
           Ônibus parou, câmera sem leitura
+        </button>
+        <button type="button" onClick={apertarBotao}>
+          Botão do poste: tem passageiro com deficiência visual aqui
         </button>
       </div>
       {mensagem && <p className="status">{mensagem}</p>}

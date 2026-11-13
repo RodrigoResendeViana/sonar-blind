@@ -3,7 +3,6 @@ import axe from 'axe-core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
-import { interpretarComando } from './comandos'
 
 const PARADA = {
   id: 'demo',
@@ -66,7 +65,55 @@ class EventSourceFalso {
   }
 }
 
+const PLANO = {
+  trechos: [
+    {
+      linha: 'DEMO-20',
+      sentido: 'Centro (exemplo)',
+      embarque: { id: 'demo', nome: PARADA.nome, lat: -23.5424, lon: -46.4712 },
+      desembarque: { id: 'ex-centro', nome: 'Centro (exemplo)', lat: -23.545, lon: -46.498 },
+      paradas: 3,
+      minutos: 9,
+    },
+  ],
+  caminhada_inicio_m: 0,
+  caminhada_fim_m: 40,
+  minutos_estimados: 15,
+  baldeacoes: 0,
+}
+
+function conversa(estado: string, fala: string, extra: Record<string, unknown> = {}) {
+  return {
+    sessao: '11111111-2222-3333-4444-555555555555',
+    estado,
+    fala,
+    espera_id: null,
+    plano: null,
+    trecho: 0,
+    destino: null,
+    demo: true,
+    acompanhar: false,
+    intervalo_s: 3,
+    ...extra,
+  }
+}
+
+function respostaConversa(corpo: { evento: string; texto?: string }): unknown {
+  if (corpo.evento === 'abrir') return conversa('inicio', 'Olá, eu sou o Sonar. Toque na tela e diga para onde você quer ir.')
+  if (corpo.texto?.includes('centro')) {
+    return conversa('confirmar_plano', 'Para ir até Centro: pegue o DEMO-20. Quer ir? Diga sim.', {
+      plano: PLANO,
+      destino: 'Centro',
+    })
+  }
+  if (corpo.texto === 'cheguei') {
+    return conversa('no_ponto', 'Estou esperando o DEMO-20 com você.', { plano: PLANO, destino: 'Centro', espera_id: ESPERA.id })
+  }
+  return conversa('inicio', 'Não entendi.')
+}
+
 function respostaPara(url: string, init?: RequestInit): unknown {
+  if (url.endsWith('/conversa')) return respostaConversa(JSON.parse(String(init?.body ?? '{}')))
   if (url.endsWith('/paradas')) return [PARADA]
   if (url.includes('/ia/perguntar')) {
     return {
@@ -131,42 +178,30 @@ describe('acessibilidade (axe)', () => {
   })
 })
 
-describe('jornada do passageiro', () => {
-  it('pergunta, chega ao ponto e ouve os avisos', async () => {
+describe('jornada por voz', () => {
+  it('diz o destino, recebe o plano, chega ao ponto e ouve o ônibus', async () => {
     localStorage.setItem('sonar.consentimento', '2026-11-08')
     render(<App />)
+    expect(await screen.findByText(/diga para onde você quer ir/, { selector: '.status' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Toque para falar/ })).toBeTruthy()
 
-    fireEvent.change(await screen.findByLabelText('Linha ou destino'), { target: { value: 'linha DEMO-10' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Perguntar' }))
-    expect(await screen.findByText(/chega em 5 minutos/, { selector: '.status' })).toBeTruthy()
+    // sem reconhecimento de voz (como no jsdom e no iOS instalado), o campo de texto aparece
+    fireEvent.change(screen.getByLabelText('Escrever em vez de falar'), { target: { value: 'quero ir para o centro' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+    expect(await screen.findByText(/pegue o DEMO-20/, { selector: '.status' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /Plano \(demonstração\): Centro/ })).toBeTruthy()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Cheguei ao ponto: esperar DEMO-10' }))
-    expect(await screen.findByRole('heading', { name: /Esperando DEMO-10/ })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Escrever em vez de falar'), { target: { value: 'cheguei' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+    expect(await screen.findByText('Estou esperando o DEMO-20 com você.', { selector: '.status' })).toBeTruthy()
 
+    await waitFor(() => expect(EventSourceFalso.abertas.at(-1)?.url).toBe(`/api/esperas/${ESPERA.id}/eventos`))
     const fonte = EventSourceFalso.abertas.at(-1)!
-    expect(fonte.url).toBe(`/api/esperas/${ESPERA.id}/eventos`)
     act(() => {
-      fonte.emitir({ id: 3, tipo: 'onibus_chegando', fala: 'Chegando agora: linha DEMO-10. É o seu.', dados: { vibrar: 'longa' } })
+      fonte.emitir({ id: 2, tipo: 'ponto_ativado', fala: 'Espera iniciada.', dados: {} })
+      fonte.emitir({ id: 3, tipo: 'onibus_chegando', fala: 'Chegando agora: linha DEMO-20. É o seu.', dados: { vibrar: 'longa' } })
     })
-    expect(await screen.findByText('Chegando agora: linha DEMO-10. É o seu.', { selector: '.status' })).toBeTruthy()
-    await waitFor(() => expect(screen.getByTestId('anuncio').textContent).toBe('Chegando agora: linha DEMO-10. É o seu.'))
-
-    act(() => {
-      fonte.emitir({ id: 4, tipo: 'onibus_passou_direto', fala: 'A linha DEMO-10 passou sem parar.', dados: {} })
-    })
-    expect(await screen.findByRole('heading', { name: 'O ônibus não parou?' })).toBeTruthy()
-  })
-})
-
-describe('comandos de voz', () => {
-  it.each([
-    ['Embarquei', 'embarquei'],
-    ['ele não parou!', 'nao_parou'],
-    ['o ônibus passou direto', 'nao_parou'],
-    ['quero cancelar', 'cancelar'],
-    ['onde fica o ponto?', 'localizar'],
-    ['linha 8000-10', null],
-  ])('"%s" vira %s', (frase, esperado) => {
-    expect(interpretarComando(frase)).toBe(esperado)
+    expect(await screen.findByText('Chegando agora: linha DEMO-20. É o seu.', { selector: '.status' })).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('anuncio').textContent).toBe('Chegando agora: linha DEMO-20. É o seu.'))
   })
 })
