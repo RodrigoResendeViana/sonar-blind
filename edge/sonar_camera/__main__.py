@@ -24,7 +24,11 @@ def main() -> None:
     argumentos.add_argument("--parada", default="demo")
     argumentos.add_argument("--linhas", default="", help="linhas que passam no ponto, separadas por vírgula")
     argumentos.add_argument("--modo", choices=["teclado", "webcam"], default="teclado")
-    argumentos.add_argument("--camera", type=int, default=0)
+    argumentos.add_argument(
+        "--camera",
+        default="0",
+        help="número da webcam (0, 1...) ou URL do vídeo da ESP32-CAM (http://<ip>:81/stream?t=<token>)",
+    )
     argumentos.add_argument("--modelo", default="modelos/letreiro.pt")
     argumentos.add_argument(
         "--detector",
@@ -39,7 +43,8 @@ def main() -> None:
     opcoes = argumentos.parse_args()
 
     if opcoes.modo == "webcam":
-        detector = DetectorCamera(escolher_localizador(opcoes.detector, opcoes.modelo), opcoes.camera, opcoes.janela)
+        camera = int(opcoes.camera) if opcoes.camera.isdigit() else opcoes.camera
+        detector = DetectorCamera(escolher_localizador(opcoes.detector, opcoes.modelo), camera, opcoes.janela)
     else:
         detector = DetectorTeclado()
     cliente = mqtt.Client(

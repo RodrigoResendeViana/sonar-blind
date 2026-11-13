@@ -45,6 +45,7 @@ cd edge
 .\iniciar.ps1                  # webcam + janela (pede a senha do MQTT camera-demo)
 .\iniciar.ps1 -Braco           # também mira sem espera aberta (demo do braço)
 .\iniciar.ps1 -Modo teclado    # sem câmera
+.\iniciar.ps1 -Braco -Camera "http://192.168.0.50:81/stream?t=TOKEN"   # vídeo da ESP32-CAM
 ```
 
 Na primeira vez, o script cria o `.venv` e instala tudo (alguns minutos). A senha do MQTT é pedida
