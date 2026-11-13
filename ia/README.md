@@ -1,5 +1,10 @@
 # Agente de IA generativa (equipe de GenAI)
 
+> A viagem em si é conduzida pela conversa por voz da API (`api/sonar_api/conversa.py`, regras
+> rápidas e previsíveis). O agente entra nas perguntas que as regras não entendem ("o ônibus tem
+> elevador?", "qual o próximo depois desse?") e no planejamento por frase livre ("preciso estar
+> no hospital às 3, como faço?").
+
 Entende a pergunta do passageiro (texto vindo da voz) e responde com dados reais. A API do Sonar
 chama `POST {SONAR_IA_URL}/perguntar` com o contrato de
 [`docs/contratos.md`](../docs/contratos.md#pergunta-por-voz-app--api--ia) e valida a resposta.
@@ -15,7 +20,8 @@ voz (Web Speech API no app) → texto → API /ia/perguntar → agente → Ollam
   nenhuma pergunta sai para um serviço de terceiros.
 - **Ferramentas** (`sonar_ia/ferramentas.py`), só de leitura, sempre pela API do Sonar:
   - `buscar_linha(termo)`: linha por número ou destino ("Lapa" → 8000-10, sentido Terminal Lapa);
-  - `previsao_parada(parada_id)`: linhas que passam no ponto, próximos ônibus e minutos até chegar.
+  - `previsao_parada(parada_id)`: linhas que passam no ponto, próximos ônibus e minutos até chegar;
+  - `planejar_viagem(destino)`: o plano da viagem (até uma baldeação), o mesmo da conversa por voz.
 - **Rápido numa CPU**: quando o passageiro está num ponto, a previsão do ponto é buscada **antes**
   de chamar o modelo e vai no contexto (uma ida ao LLM a menos). Resposta limitada a 120 tokens,
   modelo mantido carregado (`keep_alive`) e prazo total de 17 s.
@@ -61,7 +67,7 @@ Para trocar o modelo (ex.: um menor, mais rápido): `aws ssm put-parameter --nam
 ```bash
 cd ia
 pip install httpx
-python avaliar.py                       # 13 perguntas contra o site publicado
+python avaliar.py                       # as perguntas de avaliacao/perguntas.json, contra o site
 python avaliar.py --com-olhovivo        # + 2 perguntas que precisam do token do Olho Vivo
 ```
 

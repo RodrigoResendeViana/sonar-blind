@@ -19,10 +19,20 @@ PREVISAO = {
 LINHAS = {"fonte": "olhovivo", "linhas": [{"codigo": "8000-10", "origem": "PCA RAMOS", "destino": "TERMINAL LAPA"}]}
 
 
+VIAGEM = {
+    "rede": "demonstracao",
+    "destino": "Hospital Exemplo",
+    "planos": [{"trechos": [{"linha": "DEMO-20"}, {"linha": "DEMO-30"}]}],
+    "fala": "Pegue o DEMO-20 e desça no Centro. Lá, pegue o DEMO-30.",
+}
+
+
 def api_falsa():
     def tratar(req: httpx.Request):
         if req.url.path == "/linhas":
             return httpx.Response(200, json=LINHAS)
+        if req.url.path == "/viagens/planejar":
+            return httpx.Response(200, json=VIAGEM)
         if req.url.path == "/paradas/demo/previsao":
             return httpx.Response(200, json=PREVISAO)
         return httpx.Response(404)
@@ -162,3 +172,11 @@ def test_avaliacao_confere_os_criterios():
     assert len(avaliar.conferir({"nao_contem": ["9999-99"], "acao_nao": ["9999-99"]}, inventada)) == 2
     perguntas = json.loads((Path(__file__).parents[1] / "avaliacao" / "perguntas.json").read_text(encoding="utf-8"))
     assert len({p["id"] for p in perguntas}) == len(perguntas) >= 12
+
+
+def test_planejar_viagem_por_ferramenta():
+    roteiro = [chamar("planejar_viagem", destino="hospital"), fala("Pegue o DEMO-20 e depois o DEMO-30.")]
+    with cliente(roteiro) as c:
+        corpo = c.post("/perguntar", json={"texto": "como chego no hospital?"}).json()
+    assert corpo["status"] == "ok"
+    assert "demonstracao:planejador" in corpo["fontes"]
