@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     paradas_arquivo: str = ""
     simuladores: bool = True
 
+    # planejador de viagem: GTFS da SPTrans (zip) para as linhas reais; sem ele, só a rede de demonstração
+    gtfs_arquivo: str = ""
+    # destino falado → coordenadas (OpenStreetMap), só para a rede real; vazio desliga
+    geocodificador_url: str = "https://nominatim.openstreetmap.org"
+
     aviso_minutos: int = 4
     espera_minutos: int = 45
     demo_velocidade: float = 1.0

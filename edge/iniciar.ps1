@@ -3,6 +3,7 @@
 #   .\iniciar.ps1                         # webcam + janela, parada demo, linhas DEMO-10 e DEMO-20
 #   .\iniciar.ps1 -Braco                  # também publica a posição do letreiro sem espera (demo do braço)
 #   .\iniciar.ps1 -Modo teclado -Braco    # sem câmera: digite DEMO-10@0.2, DEMO-10@0.8...
+#   .\iniciar.ps1 -Camera "http://192.168.0.50:81/stream?t=SEU_TOKEN"   # ESP32-CAM na cabeça do braço
 #
 # Na primeira vez, cria o ambiente (.venv) e instala tudo (alguns minutos: EasyOCR traz o PyTorch).
 # A senha do MQTT (camera-<parada>) é pedida na hora e não fica gravada em lugar nenhum.
@@ -13,7 +14,7 @@ param(
     [string]$Parada = "demo",
     [string]$Linhas = "DEMO-10,DEMO-20",
     [string]$Servidor = "sonar.rodrigoviana.app.br",
-    [int]$Camera = 0,
+    [string]$Camera = "0",
     [ValidateSet("auto", "yolo", "ocr")] [string]$Detector = "auto",
     [switch]$Braco,
     [switch]$SemJanela

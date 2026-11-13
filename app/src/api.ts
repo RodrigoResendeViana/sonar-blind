@@ -49,6 +49,58 @@ export interface RespostaIA {
   confianca: number
 }
 
+export interface TrechoPlano {
+  linha: string
+  sentido: string
+  embarque: { id: string; nome: string; lat: number; lon: number }
+  desembarque: { id: string; nome: string; lat: number; lon: number }
+  paradas: number
+  minutos: number
+}
+
+export interface PlanoViagem {
+  trechos: TrechoPlano[]
+  caminhada_inicio_m: number
+  caminhada_fim_m: number
+  minutos_estimados: number
+  baldeacoes: number
+}
+
+export type EstadoConversa =
+  | 'inicio'
+  | 'confirmar_plano'
+  | 'indo_ao_ponto'
+  | 'no_ponto'
+  | 'apos_ocorrencia'
+  | 'a_bordo'
+  | 'chegou'
+
+export interface RespostaConversa {
+  sessao: string
+  estado: EstadoConversa
+  fala: string
+  espera_id: string | null
+  plano: PlanoViagem | null
+  trecho: number
+  destino: string | null
+  demo: boolean
+  acompanhar: boolean
+  intervalo_s: number
+  pedir_localizacao?: boolean
+  repetir_texto?: string
+}
+
+export type CenarioDemo = 'auto' | 'embarque' | 'nao_parou' | 'maquete'
+
+export interface PedidoConversa {
+  sessao: string | null
+  evento: 'abrir' | 'fala' | 'posicao' | 'tick'
+  texto?: string
+  lat?: number
+  lon?: number
+  cenario_demo?: CenarioDemo
+}
+
 export interface Indicadores {
   esperas: number
   avisos_enviados: number
@@ -115,6 +167,8 @@ const post = <T>(caminho: string, corpo: unknown = {}) =>
   chamar<T>(caminho, { method: 'POST', body: JSON.stringify(corpo) })
 
 export const api = {
+  conversar: (pedido: PedidoConversa) => post<RespostaConversa>('/conversa', pedido),
+  botao: (paradaId: string) => post<{ espera: Espera | null }>(`/simulador/paradas/${paradaId}/botao`),
   paradas: () => chamar<Parada[]>('/paradas'),
   paradaProxima: (lat: number, lon: number) =>
     chamar<{ parada: Parada; distancia_m: number }>(`/paradas/proxima?lat=${lat}&lon=${lon}`),

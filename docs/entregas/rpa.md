@@ -13,9 +13,10 @@ essa pessoa não consegue ver. Na prática, a reclamação não é feita e o pro
 ## 2. Solução
 
 O Sonar já tem as evidências: a linha (Olho Vivo e câmera), o prefixo do ônibus avisado, o horário,
-o tempo parado medido pelo ultrassom e se o motorista confirmou o aviso no bipper. Com o
-**consentimento** do passageiro ("posso registrar a reclamação?"), um robô no **n8n** monta e registra
-a reclamação e devolve o **protocolo**, que o app fala para o passageiro.
+o tempo parado medido pelo ultrassom e se o motorista confirmou o aviso no bipper. Quando o ônibus
+passa direto, o app pergunta e o passageiro responde **por voz** ("quero reclamar"). Com esse
+**consentimento**, um robô no **n8n** monta e registra a reclamação e devolve o **protocolo**, que o
+app fala para o passageiro.
 
 ```
 passageiro aceita ─▶ API cria a ocorrência ─▶ webhook interno ─▶ n8n

@@ -18,12 +18,15 @@ from starlette.concurrency import run_in_threadpool
 from . import __version__, demo
 from .barramento import Barramento
 from .config import Settings
+from .conversa import Conversa, Redes
 from .db import Base, criar_engine
+from .geocodificador import Geocodificador
 from .metricas import HTTP_EM_ANDAMENTO, HTTP_LATENCIA, HTTP_REQUISICOES
 from .mqtt_ponte import PonteMqtt, Publicador
 from .olhovivo import ClienteOlhoVivo, OlhoVivoIndisponivel
 from .paradas import CadastroParadas
-from .rotas import esperas, ia, linhas, ocorrencias, painel, paradas, saude, simulador
+from .rede import carregar_demo, carregar_gtfs
+from .rotas import conversa, esperas, ia, linhas, ocorrencias, painel, paradas, saude, simulador
 from .servico import Conflito, NaoEncontrado, Sonar
 
 log = logging.getLogger("sonar")
@@ -90,12 +93,26 @@ def create_app(
     elif publicador is None:
         log.warning("SONAR_MQTT_HOST não definido: sem hardware, só os simuladores")
 
+    redes = Redes(carregar_demo())
+    geocodificador = Geocodificador(cfg.geocodificador_url) if cfg.geocodificador_url else None
+
+    async def carregar_rede_real() -> None:
+        """O GTFS da cidade inteira leva alguns segundos: carrega em segundo plano."""
+        try:
+            redes.gtfs = await asyncio.to_thread(carregar_gtfs, cfg.gtfs_arquivo)
+        except Exception:  # noqa: BLE001 - sem GTFS, o planejador segue só com a demonstração
+            log.exception("não consegui carregar o GTFS de %s", cfg.gtfs_arquivo)
+
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI):
         await run_in_threadpool(sonar.carregar_metricas_dispositivos)
         if ponte is not None:
             ponte.iniciar()
         monitor = asyncio.create_task(monitorar(sonar, cfg.monitor_intervalo_s))
+        if cfg.gtfs_arquivo:
+            carga = asyncio.create_task(carregar_rede_real())
+            app.state.tarefas.add(carga)
+            carga.add_done_callback(app.state.tarefas.discard)
         try:
             yield
         finally:
@@ -107,6 +124,8 @@ def create_app(
             if ponte is not None:
                 ponte.parar()
             await olhovivo.fechar()
+            if geocodificador is not None:
+                await geocodificador.fechar()
             await app.state.http.aclose()
             await run_in_threadpool(sonar.fechar, engine)
 
@@ -125,6 +144,8 @@ def create_app(
     app.state.http = httpx.AsyncClient(transport=transporte_http, timeout=cfg.ia_timeout_s)
     app.state.tarefas = set()
     app.state.limitadores = {}
+    app.state.redes = redes
+    app.state.conversa = Conversa(sonar, redes, app.state.http, geocodificador, app.state.tarefas)
 
     @app.middleware("http")
     async def medir(request: Request, call_next):
@@ -155,7 +176,7 @@ def create_app(
     async def _valor_invalido(_request: Request, erro: ValueError):
         return JSONResponse(status_code=422, content={"detail": str(erro)})
 
-    for modulo in (saude, paradas, linhas, esperas, ia, painel, ocorrencias):
+    for modulo in (saude, paradas, linhas, esperas, ia, conversa, painel, ocorrencias):
         app.include_router(modulo.router)
     if cfg.simuladores:
         app.include_router(simulador.router)

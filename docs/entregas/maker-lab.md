@@ -17,7 +17,8 @@ Três dispositivos ESP32 ligados à nuvem por MQTT com TLS:
 | Dispositivo | O que faz | Componentes |
 |---|---|---|
 | **Sonar Braço** | cabeça pan-tilt com a webcam que **segue o letreiro** do ônibus; varre o horizonte enquanto ninguém aparece | ESP32, 2 servos, suporte pan-tilt, fonte 5 V, potenciômetro |
-| **Sonar Ponto** | detecta o ônibus parando (ultrassom), pisca um LED para o motorista e apita para o passageiro achar o poste | ESP32, HC-SR04, LED de alto brilho, buzzer |
+| **Sonar Ponto** | detecta o ônibus parando (ultrassom), pisca um LED para o motorista, apita para o passageiro achar o poste; **botão no poste** avisa os motoristas mesmo sem app ou sem internet | ESP32, HC-SR04, LED de alto brilho, buzzer, botão |
+| **Sonar Câmera** (opcional) | ESP32-CAM na cabeça do braço, transmitindo o vídeo sem fio para o notebook | ESP32-CAM AI-Thinker |
 | **Sonar Bordo** | bipper na cabine: avisa o motorista que há um passageiro cego no próximo ponto; botão "ciente" | ESP32, buzzer, LED, OLED, botão |
 
 O braço é integrado à visão computacional: o notebook acha e lê o letreiro e publica a posição dele

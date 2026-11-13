@@ -33,6 +33,8 @@ Pinos e tópicos: [`firmware/README.md`](../firmware/README.md). Contratos: [`co
 | 1 | Display OLED SSD1306 128x64 (I²C) | Bordo | opcional |
 | 1 | Botão táctil | "ciente" do motorista no Bordo | |
 | 1 | Potenciômetro 10 kΩ | modo manual do braço | opcional (`USAR_POT 0` se não usar) |
+| 1 | Botão grande (de preferência com relevo) | "tem passageiro" no poste do Sonar Ponto | GPIO 32 e GND |
+| 1 | ESP32-CAM AI-Thinker + adaptador USB-serial (FTDI 3,3 V) | câmera sem fio na cabeça do braço | opcional: substitui a webcam USB |
 | — | Protoboards, jumpers, capacitor 470–1000 µF / 10 V | | capacitor na entrada dos servos evita resets |
 | — | Papelão, cola quente, letreiros impressos | maquete | `python visao/imprimir.py` |
 
@@ -66,6 +68,27 @@ Pinos e tópicos: [`firmware/README.md`](../firmware/README.md). Contratos: [`co
 
 HC-SR04 com TRIG no GPIO 26 e ECHO no GPIO 27 **pelo divisor** (ECHO → 1 kΩ → GPIO 27 → 2 kΩ → GND),
 LED (com 220 Ω) no GPIO 16, buzzer no GPIO 25. O sensor fica na altura do "ônibus", virado para a rua.
+
+**Botão do poste** entre o GPIO 32 e o GND (o pull-up é interno). Ele é a saída para quem está sem o
+app ou sem internet: um toque e o ponto dá três bips curtos ("recebi"), o LED começa a piscar para os
+motoristas na hora (mesmo sem rede, por 10 minutos) e, com rede, a API avisa o Sonar Bordo de todos
+os ônibus que vêm para o ponto. O motorista para e fala a linha. Cole uma etiqueta em braille ou em
+relevo no botão, na altura da mão.
+
+### Sonar Câmera (opcional: ESP32-CAM sem fio)
+
+A ESP32-CAM vai na cabeça do braço no lugar da webcam, sem cabo USB até o notebook. Ela só transmite
+o vídeo pela rede local (MJPEG, com token na URL); o notebook continua fazendo o OCR/YOLO, porque um
+ESP32 não roda visão computacional desse porte.
+
+1. Em `firmware/include/secrets.h`, defina `CAMERA_TOKEN` (um texto aleatório) e o Wi-Fi (o mesmo
+   do notebook).
+2. Gravação: ESP32-CAM no adaptador USB-serial (5V→5V, GND→GND, U0T→RX, U0R→TX) e **IO0 ligado ao
+   GND**; `pio run -e camera -t upload`; tire o IO0 do GND e aperte RESET.
+3. O monitor serial mostra o endereço: `http://192.168.x.y:81/stream?t=<token>`.
+4. No notebook: `.\iniciar.ps1 -Braco -Camera "http://192.168.x.y:81/stream?t=<token>"`.
+5. Alimente com 5 V e 2 A (a câmera e o Wi-Fi puxam picos); se a imagem vier de cabeça para baixo,
+   `CAMERA_VIRAR 1`.
 
 ### Sonar Bordo
 

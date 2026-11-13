@@ -7,6 +7,10 @@
 //   ONIBUS_DETECTADO --(foi embora)--> publica a passagem -->
 //       linha certa? sim: AGUARDANDO_CONFIRMACAO (LED aceso)  não: AGUARDANDO
 //   o usuário confirma o embarque ou o "não parou" no app; a API manda cmd desativar --> OCIOSO
+//
+// Botão no poste ("tem passageiro com deficiência visual aqui"): para quem está sem o app ou sem
+// internet. Publica {"tipo":"botao"} e a API avisa os motoristas de todas as linhas do ponto. Mesmo
+// sem rede, o LED já começa a piscar na hora, por 10 minutos.
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
@@ -45,6 +49,7 @@ const uint16_t PULSO[] = {500, 500};
 const uint16_t ERRO_REDE[] = {100, 100, 100, 700};
 const uint16_t BIP_LOCALIZAR[] = {150, 150, 150, 150, 150, 600};
 const uint16_t BIP_E_O_SEU[] = {900, 100};
+const uint16_t BIP_BOTAO[] = {80, 80, 80, 80};
 
 String topicoCmd, topicoEvento, topicoStatus, topicoVisao, topicoCamera;
 
@@ -70,6 +75,9 @@ LeituraCamera pendente;  // leitura que chegou antes do ultrassom perceber algo
 bool cameraOnline = false;
 uint32_t cameraVistaMs = 0;
 uint32_t ultimoStatusMs = 0;
+bool botaoAnterior = HIGH;
+uint32_t botaoMudouMs = 0;
+uint32_t pedidoLocalAteMs = 0;  // pedido do botão enquanto a API não responde
 
 Sinal led(PINO_LED_PONTO);
 Sinal buzzer(PINO_BUZZER_PONTO);
@@ -222,9 +230,29 @@ void aoLerCamera(const JsonDocument& dados) {
   }
 }
 
+void lerBotao() {
+  const bool leitura = digitalRead(PINO_BOTAO_PONTO);
+  if (leitura == botaoAnterior || millis() - botaoMudouMs < 50) return;  // filtro de 50 ms
+  botaoMudouMs = millis();
+  botaoAnterior = leitura;
+  if (leitura != LOW) return;  // só na hora de apertar
+  JsonDocument dados;
+  dados["tipo"] = "botao";
+  const String quando = rede::iso(time(nullptr));
+  if (quando.length()) dados["em"] = quando;
+  rede::publicar(topicoEvento.c_str(), dados, false, true);  // guarda e manda quando a rede voltar
+  TOCAR(buzzer, BIP_BOTAO, false);  // "recebi"
+  if (estado == Estado::OCIOSO) {
+    pedidoLocalAteMs = millis() + BOTAO_LOCAL_MS;
+    ir(Estado::AGUARDANDO);  // LED piscando já, sem esperar a API
+  }
+  Serial.println("[ponto] botão apertado");
+}
+
 void aoComando(const JsonDocument& dados) {
   const char* acao = dados["acao"] | "";
   if (strcmp(acao, "ativar") == 0) {
+    pedidoLocalAteMs = 0;  // a API assumiu
     const time_t expira = rede::deIso(dados["expira_em"] | "");
     if (expira != 0 && rede::horaValida() && expira < time(nullptr)) {
       ir(Estado::OCIOSO);  // comando retido de uma espera que já venceu
@@ -293,6 +321,10 @@ void verificarPrazos() {
   if (estado != Estado::OCIOSO && expiraEm != 0 && rede::horaValida() && time(nullptr) > expiraEm) {
     ir(Estado::OCIOSO);
   }
+  if (pedidoLocalAteMs != 0 && esperaId.length() == 0 && (int32_t)(agora - pedidoLocalAteMs) > 0) {
+    pedidoLocalAteMs = 0;
+    ir(Estado::OCIOSO);  // pedido só local que venceu
+  }
   if (agora - ultimoStatusMs > STATUS_MS) publicarStatus();
 }
 
@@ -302,6 +334,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(PINO_TRIG, OUTPUT);
   pinMode(PINO_ECHO, INPUT);
+  pinMode(PINO_BOTAO_PONTO, INPUT_PULLUP);
   led.iniciar();
   buzzer.iniciar();
 
@@ -323,6 +356,7 @@ void setup() {
 
 void loop() {
   rede::loop();
+  lerBotao();
   if (estado != Estado::OCIOSO) processarUltrassom();
   verificarPrazos();
   atualizarLed();

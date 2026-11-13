@@ -21,6 +21,19 @@ DEFINICOES = [
     {
         "type": "function",
         "function": {
+            "name": "planejar_viagem",
+            "description": "Planeja a viagem de ônibus até um destino (lugar, bairro, terminal ou endereço): "
+            "qual linha pegar, onde embarcar e onde descer, com no máximo uma baldeação.",
+            "parameters": {
+                "type": "object",
+                "properties": {"destino": {"type": "string", "description": "para onde o passageiro quer ir"}},
+                "required": ["destino"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "previsao_parada",
             "description": "Próximos ônibus de uma parada do Sonar: linha, destino e minutos até chegar.",
             "parameters": {
@@ -33,6 +46,7 @@ DEFINICOES = [
 ]
 
 _TERMO = re.compile(r"^[0-9A-Za-zÀ-ÿ .\-]{2,40}$")
+_DESTINO = re.compile(r"^[0-9A-Za-zÀ-ÿ .,'\-]{2,80}$")
 _ID = re.compile(r"^[a-z0-9-]{1,64}$")
 
 
@@ -46,6 +60,8 @@ class Ferramentas:
                 return await self.buscar_linha(str(argumentos.get("termo", "")))
             if nome == "previsao_parada":
                 return await self.previsao_parada(str(argumentos.get("parada_id", "")))
+            if nome == "planejar_viagem":
+                return await self.planejar_viagem(str(argumentos.get("destino", "")))
         except httpx.HTTPError:
             return {"erro": "dados indisponíveis agora"}
         return {"erro": f"ferramenta desconhecida: {nome}"}
@@ -90,4 +106,21 @@ class Ferramentas:
             "codigos": sorted(do_ponto),
             "codigos_do_ponto": sorted(do_ponto),
             "fonte": f"{corpo['fonte']}:previsao",
+        }
+
+    async def planejar_viagem(self, destino: str) -> dict:
+        destino = destino.strip()
+        if not _DESTINO.match(destino):
+            return {"erro": "destino inválido"}
+        resposta = await self.api.get("/viagens/planejar", params={"destino": destino})
+        resposta.raise_for_status()
+        corpo = resposta.json()
+        if not corpo["planos"]:
+            return {"observacao": corpo["fala"]}
+        linhas = sorted({t["linha"] for plano in corpo["planos"] for t in plano["trechos"]})
+        return {
+            "destino": corpo["destino"],
+            "plano": corpo["fala"],
+            "codigos": linhas,
+            "fonte": f"{corpo['rede']}:planejador",
         }

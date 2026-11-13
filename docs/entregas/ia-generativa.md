@@ -12,9 +12,15 @@ voz: a pessoa pergunta e o sistema responde e passa a "esperar junto" a linha ce
 
 ## 2. Solução
 
-Um **agente** com LLM local que entende a pergunta falada ("qual ônibus vai para a Lapa?",
-"quanto falta pro demo vinte?") e responde **só com dados reais**, consultados por ferramentas na API
-do Sonar, que lê o **Olho Vivo da SPTrans** (linhas, sentidos e previsão de chegada).
+O app tem **um botão só**. A pessoa diz para onde vai e o Sonar conduz a viagem inteira por voz:
+plano com até uma baldeação, aviso ao ponto, "é o seu", hora de descer e reclamação. Duas camadas:
+
+- **Conversa da viagem** (`api/sonar_api/conversa.py`): entende comandos e destinos por regras
+  (rápido e previsível para quem depende só da voz) e planeja o caminho sobre o GTFS da SPTrans
+  (`api/sonar_api/planejador.py`), com o endereço falado resolvido no OpenStreetMap.
+- **Agente generativo** com LLM local para o que as regras não entendem ("o ônibus tem elevador?",
+  "preciso estar no hospital às 3, como faço?") e responde **só com dados reais**, consultados por
+  ferramentas na API do Sonar: Olho Vivo (linhas, sentidos e previsão) e o próprio planejador.
 
 ```
 voz (Web Speech API no app) ─▶ texto ─▶ API /ia/perguntar ─▶ agente ─▶ Ollama (qwen2.5:3b, na EC2)
@@ -26,7 +32,7 @@ voz (Web Speech API no app) ─▶ texto ─▶ API /ia/perguntar ─▶ agente 
 |---|---|---|
 | Voz → texto e texto → voz | Web Speech API do navegador, no app (PWA) | `app/src/voz.ts` |
 | LLM | Ollama com `qwen2.5:3b` (suporta *tool calling*), na própria EC2: a pergunta não sai para terceiros | `infra/compose/docker-compose.yml` |
-| Ferramentas | `buscar_linha(termo)` e `previsao_parada(parada_id)`, só leitura, argumentos validados | `ia/sonar_ia/ferramentas.py` |
+| Ferramentas | `buscar_linha(termo)`, `previsao_parada(parada_id)` e `planejar_viagem(destino)`, só leitura, argumentos validados | `ia/sonar_ia/ferramentas.py` |
 | Orquestração | pré-busca da previsão do ponto, até 3 rodadas, prazo de 17 s, 120 tokens | `ia/sonar_ia/agente.py` |
 | Contrato | `{status, resposta_falada, acao, fontes, confianca}` validado pela API | `docs/contratos.md` |
 

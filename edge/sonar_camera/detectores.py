@@ -165,13 +165,18 @@ def escolher_localizador(tipo: str, modelo: str):
 # ------------------------------------------------------------------------------------- câmera
 
 
+def _sem_token(camera: int | str) -> str:
+    """URL da ESP32-CAM sem o token, para não ir parar no log."""
+    return re.sub(r"([?&]t=)[^&]+", r"\1***", str(camera))
+
+
 class DetectorCamera:
     """Lê a webcam em segundo plano: um fio captura e rastreia; outro detecta e lê o texto.
 
     ler() nunca espera o OCR: devolve as leituras novas (se houver) e a posição rastreada.
     """
 
-    def __init__(self, localizador, camera: int = 0, janela: bool = False, ociosa_s: float = 10.0):
+    def __init__(self, localizador, camera: int | str = 0, janela: bool = False, ociosa_s: float = 10.0):
         self._localizador = localizador
         self._camera = camera
         self._janela = janela
@@ -207,7 +212,7 @@ class DetectorCamera:
             if self._captura is None:
                 self._captura = cv2.VideoCapture(self._camera)
                 if not self._captura.isOpened():
-                    log.error("não abri a câmera %s; tento de novo em 5 s", self._camera)
+                    log.error("não abri a câmera %s; tento de novo em 5 s", _sem_token(self._camera))
                     self._captura = None
                     time.sleep(5)
                     continue

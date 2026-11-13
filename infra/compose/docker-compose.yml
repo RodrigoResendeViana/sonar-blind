@@ -50,6 +50,9 @@ services:
       SONAR_SAL_HASH: ${SONAR_SAL_HASH:?defina SONAR_SAL_HASH no .env}
       SONAR_IA_URL: ${SONAR_IA_URL:-}
       SONAR_RPA_WEBHOOK_URL: ${SONAR_RPA_WEBHOOK_URL:-}
+      SONAR_GTFS_ARQUIVO: ${SONAR_GTFS_ARQUIVO:-}
+    volumes:
+      - ${SONAR_DADOS_DIR:-./dados}:/dados:ro
     cap_drop: [ALL]
     read_only: true
     tmpfs: [/tmp]

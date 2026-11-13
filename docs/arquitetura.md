@@ -9,7 +9,7 @@ flowchart LR
   subgraph AWS[AWS us-east-1 · Terraform]
     subgraph EC2[EC2 m7i-flex.large · docker compose]
       C[Caddy<br/>HTTPS, PWA, cabeçalhos]
-      API[API FastAPI]
+      API[API FastAPI<br/>conversa por voz + planejador]
       DB[(Postgres)]
       M[Mosquitto<br/>MQTT TLS 8883]
       NE[node-exporter]
@@ -28,6 +28,8 @@ flowchart LR
   end
   SB[Sonar Bordo<br/>ESP32 na cabine]
   OV[Olho Vivo<br/>SPTrans]
+  GT[(GTFS SPTrans<br/>linhas e paradas)]
+  OSM[OpenStreetMap<br/>Nominatim]
   GH[GitHub Actions<br/>Gitleaks, Semgrep, Trivy]
   GHCR[(GHCR)]
   TG[Telegram]
@@ -36,6 +38,8 @@ flowchart LR
   API --> DB
   API <--> M
   API -->|previsão, cache 30 s| OV
+  GT -.->|carregado no deploy| API
+  API -.->|endereço falado| OSM
   API -->|pergunta por voz| IA
   IA --> O
   IA -->|ferramentas: linhas e previsão| API
@@ -58,15 +62,20 @@ os ESP32 e o notebook da câmera só fazem conexões de saída, então não prec
 porta aberta. O pipeline publica sem SSH e sem chave da AWS guardada: troca o token OIDC do
 GitHub por credenciais de uma hora, que só podem mandar comando para esta EC2.
 
-**Fluxo de uma espera.** O app pergunta (`/ia/perguntar`), o usuário chega ao ponto
-(`POST /esperas`), a API publica `ativar` no tópico retido do ponto, o Sonar Ponto pisca o LED
-e apita, a API acompanha o Olho Vivo e avisa o Sonar Bordo do ônibus certo a ~4 minutos, o
-motorista aperta "ciente", a câmera lê o letreiro, o Sonar Ponto junta com o ultrassom e publica
-a passagem, a API fala "é o seu" pelo SSE e cruza com o "embarquei" do usuário. Se o ônibus
-passa direto, a ocorrência vai para o robô de RPA, que devolve o protocolo.
+**Fluxo de uma viagem.** O app tem um botão só: a pessoa diz o destino (`POST /conversa`), a API
+acha o lugar (rede conhecida ou OpenStreetMap), as paradas perto dela e do destino e o melhor
+caminho com até uma baldeação (GTFS da SPTrans; na demonstração, uma rede fictícia em volta da
+maquete), e fala o plano com a previsão do Olho Vivo. Quando o GPS mostra que a pessoa chegou ao
+ponto (ou ela diz "cheguei"), a API abre a espera e publica `ativar` no tópico retido do ponto: o
+Sonar Ponto pisca o LED e apita, a API acompanha o Olho Vivo e avisa o Sonar Bordo do ônibus certo
+a ~4 minutos, o motorista aperta "ciente", a câmera lê o letreiro (e o braço segue o ônibus), o
+Sonar Ponto junta com o ultrassom e publica a passagem, e a API fala "é o seu" pelo SSE. Depois do
+"embarquei", o GPS avisa a hora de descer e a baldeação. Se o ônibus passa direto, a pessoa diz
+"quero reclamar" e o robô de RPA registra e devolve o protocolo. Sem app, o botão do poste avisa
+os motoristas de todas as linhas.
 
-**Como as matérias se encaixam.** IA generativa entende a pergunta e consulta o Olho Vivo por
-ferramentas (`ia/`); Visão computacional lê o letreiro e acha onde ele está no quadro (`edge/`,
+**Como as matérias se encaixam.** IA generativa responde perguntas livres e planeja viagens por
+ferramentas (`ia/`), ao lado da conversa por regras que conduz a viagem (`api/sonar_api/conversa.py`); Visão computacional lê o letreiro e acha onde ele está no quadro (`edge/`,
 `visao/`); Maker Lab segue o letreiro com o braço e avisa no ponto e na cabine (`firmware/`); RPA
 transforma o "não parou" em reclamação com protocolo (`rpa/`); Secure DevOps entrega e vigia tudo
 (`infra/`, `.github/`). Cada parte tem uma rede de segurança: sem LLM, a API responde por regras;

@@ -43,3 +43,6 @@ visao/execucoes/
 visao/impressao/
 # notebook do ponto: ambiente virtual
 edge/.venv/
+
+# GTFS e outros dados locais do compose
+infra/compose/dados/

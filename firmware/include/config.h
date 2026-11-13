@@ -9,6 +9,8 @@
 #define PINO_ECHO 27  // pelo divisor 1 kΩ / 2 kΩ: o eco do HC-SR04 sai em 5 V
 #define PINO_LED_PONTO 16
 #define PINO_BUZZER_PONTO 25
+#define PINO_BOTAO_PONTO 32         // botão "tem passageiro com deficiência visual" para o GND (pull-up interno)
+#define BOTAO_LOCAL_MS 600000UL     // sem internet, o ponto pisca para os motoristas por 10 min
 
 // Distância (cm) abaixo da qual há um ônibus encostado no ponto. Na maquete, use ~15 cm;
 // dá para mudar sem regravar: {"acao":"config","limiar_cm":15} em sonar/parada/<id>/cmd.
