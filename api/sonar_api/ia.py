@@ -4,6 +4,10 @@ Se SONAR_IA_URL estiver definido, a pergunta vai para o agente da equipe de GenA
 (POST {SONAR_IA_URL}/perguntar, mesmo contrato). Sem ele, um responder por regras
 mantém o MVP funcionando: só fala o que está no cadastro da parada e na previsão,
 e diz "não consta" no resto.
+
+Com o agente ligado, as regras viram a rede de segurança: se o agente cair, estourar o prazo
+ou disser "não consta" para algo que as regras sabem responder (ex.: "linha DEMO-10"), vale a
+resposta das regras. O passageiro nunca fica sem resposta por causa do LLM.
 """
 
 import re
@@ -125,17 +129,24 @@ async def responder_por_regras(sonar, texto: str, parada_id: str | None) -> Resp
     )
 
 
-async def _perguntar_servico(http: httpx.AsyncClient, url: str, timeout: float, texto: str, parada_id: str | None):
+NAO_CONSEGUI = "Não consegui responder agora. Tente de novo em instantes."
+
+
+async def _perguntar_servico(
+    http: httpx.AsyncClient, url: str, timeout: float, texto: str, parada_id: str | None
+) -> RespostaIA | None:
+    """Resposta do agente, ou None se ele falhou (fora do ar, lento ou fora do contrato)."""
     try:
         resposta = await http.post(
             f"{url.rstrip('/')}/perguntar", json={"texto": texto, "parada_id": parada_id}, timeout=timeout
         )
         resposta.raise_for_status()
-        return RespostaIA.model_validate(resposta.json())
+        recebida = RespostaIA.model_validate(resposta.json())
     except (httpx.HTTPError, ValidationError, ValueError):
-        return RespostaIA(
-            status="nao_consta", resposta_falada="Não consegui responder agora. Tente de novo em instantes."
-        )
+        return None
+    if recebida.status == "nao_consta" and recebida.resposta_falada == NAO_CONSEGUI:
+        return None  # o próprio agente avisou que o LLM falhou
+    return recebida
 
 
 async def perguntar(sonar, http: httpx.AsyncClient, texto: str, parada_id: str | None) -> RespostaIA:
@@ -145,6 +156,10 @@ async def perguntar(sonar, http: httpx.AsyncClient, texto: str, parada_id: str |
     try:
         if cfg.ia_url:
             resposta = await _perguntar_servico(http, cfg.ia_url, cfg.ia_timeout_s, texto, parada_id)
+            if resposta is None or resposta.status == "nao_consta":
+                regras = await responder_por_regras(sonar, texto, parada_id)
+                if resposta is None or regras.status == "ok":
+                    resposta, modo = regras, "servico_regras"
         else:
             resposta = await responder_por_regras(sonar, texto, parada_id)
     finally:
