@@ -7,47 +7,54 @@ O robô transforma isso em reclamação formal, sem o passageiro precisar ligar 
 A automação principal é um fluxo do **n8n** (`n8n/ocorrencias.json`):
 
 ```
-a cada 15 min ─▶ GET /ocorrencias?status=pendente ─▶ conferir evidências ─▶ registrar no canal oficial ─▶ PATCH /ocorrencias/{id}
-                                                     (consentimento, linha,     (MVP: simulado, gera        (enviada + protocolo, ou
-                                                      câmera ou ciente)          protocolo SIM-...)          inconclusiva + motivo)
+aviso da API (webhook, na hora) ─┐
+a cada 15 min (rede de segurança) ┼─▶ GET /ocorrencias?status=pendente ─▶ conferir evidências ─▶ registrar no canal ─▶ PATCH /ocorrencias/{id}
+"Rodar agora" (demo, no editor) ──┘                                        (consentimento, linha,  (MVP: simulado,       (enviada + protocolo, ou
+                                                                            câmera ou ciente)       protocolo SIM-...)     inconclusiva + motivo)
 ```
 
-O app fala o protocolo para o passageiro assim que a API recebe o `PATCH`.
+Assim que o passageiro aceita registrar a reclamação, a API chama o webhook interno do n8n
+(`http://n8n:5678/webhook/sonar-ocorrencia`, só na rede do compose) e o passageiro ouve o protocolo
+em segundos. Se o aviso falhar, o agendamento de 15 minutos pega a ocorrência depois: nada se perde.
 Contrato: [`docs/contratos.md`](../docs/contratos.md#ocorrências-api--robô-de-rpa).
+
+## Já vem ligado
+
+O deploy sobe o n8n (perfil `rpa`, ligado por padrão), **importa e publica** o fluxo deste repositório
+e reinicia o n8n. Não é preciso abrir o editor para o RPA funcionar.
+
+O repositório é a fonte da verdade: cada deploy reimporta `rpa/n8n/*.json`. Mudou o fluxo no editor?
+Exporte (menu ⋯ → *Download*), salve em `rpa/n8n/` e abra um PR, senão o próximo deploy desfaz a mudança.
 
 ## Segurança
 
-- O n8n **não fica exposto na internet**: escuta só em `127.0.0.1:5678` da EC2. Para abrir o
-  editor, use um túnel do SSM (comando em `terraform output abrir_o_n8n`) e acesse
-  http://localhost:5678.
+- O n8n **não fica exposto na internet**: escuta só em `127.0.0.1:5678` da EC2 e na rede interna do
+  compose. O webhook também é interno: de fora, ninguém dispara o robô.
 - O token da API (`/sonar/api/token-servico`) e a chave que cifra as credenciais do n8n
-  (`/sonar/n8n/chave`) vêm do Parameter Store pelo deploy; nada disso fica no fluxo exportado.
-- Credenciais extras (bot do Telegram, e-mail) são cadastradas na tela do n8n e ficam cifradas
+  (`/sonar/n8n/chave`, ou uma chave gerada e guardada na EC2 se o parâmetro não existir) vêm do
+  deploy; nada disso fica no fluxo exportado.
+- Credenciais extras (bot do Telegram, e-mail) são cadastradas no editor do n8n e ficam cifradas
   no volume dele, não no Git.
 
-## Ligar na AWS
+## Abrir o editor do n8n (opcional)
 
-```bash
-# CloudShell: adicione "rpa" aos perfis (junto com "ia", se já estiver usando)
-aws ssm put-parameter --name /sonar/compose/perfis --type String --value ia,rpa --overwrite
-```
-
-O próximo deploy sobe o n8n e importa os fluxos de `rpa/n8n/`. Depois, no seu computador (precisa
-do AWS CLI e do [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)):
+No seu computador (precisa do AWS CLI e do
+[Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)):
 
 ```bash
 aws ssm start-session --target <id-da-ec2> --document-name AWS-StartPortForwardingSession \
   --parameters portNumber=5678,localPortNumber=5678
 ```
 
-Abra http://localhost:5678, crie o usuário dono, abra o fluxo "Sonar - ocorrências..." e ative-o.
+O comando pronto sai de `terraform output abrir_o_n8n`. Abra http://localhost:5678 e crie o usuário
+dono na primeira vez. Dá para ver cada execução (entrada e saída de cada nó): ótimo para os prints
+do relatório.
 
 ## Testar ponta a ponta
 
-1. No app, rode a demonstração "não parou" (`POST /api/demo/esperas` com `{"cenario":"nao_parou"}`)
-   e aceite registrar a reclamação.
-2. No n8n, clique em **Rodar agora (demo)**.
-3. O app fala "Sua reclamação foi registrada com o protocolo SIM-...".
+1. No app, rode a demonstração "não parou" e aceite registrar a reclamação.
+2. Em poucos segundos o app fala "Sua reclamação foi registrada com o protocolo SIM-...".
+3. No Grafana, `sonar_rpa_avisos_total` conta os avisos da API ao robô.
 
 ## O que a equipe de RPA evolui
 

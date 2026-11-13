@@ -24,6 +24,23 @@
       }
     },
     {
+      "id": "a0",
+      "name": "Aviso da API (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -200
+      ],
+      "webhookId": "5f3c2a1e-9b7d-4c8e-a6f1-0d2e3b4c5a69",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sonar-ocorrencia",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
       "id": "a2",
       "name": "Rodar agora (demo)",
       "type": "n8n-nodes-base.manualTrigger",
@@ -171,6 +188,17 @@
         [
           {
             "node": "Resumo da rodada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aviso da API (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Buscar ocorrências pendentes",
             "type": "main",
             "index": 0
           }
