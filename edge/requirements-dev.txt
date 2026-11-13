@@ -1,2 +1,5 @@
 -r requirements.txt
 pytest==9.2.0
+# o rastreador usa OpenCV; nos testes, a versão sem janela basta
+numpy
+opencv-python-headless

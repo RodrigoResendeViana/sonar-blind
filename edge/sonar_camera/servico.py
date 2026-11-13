@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 
-from .detectores import Detector
+from .detectores import Detector, Leitura
 from .votacao import Votacao, casar_linha
 
 Publicar = Callable[[str, dict, bool], None]
@@ -74,20 +74,28 @@ class ServicoCamera:
             return None
         melhor: tuple[str, float] | None = None
         alvo: tuple[float, float, str | None] | None = None
-        prioridade_alvo = (-1, 0.0)
+        leitura_alvo: Leitura | None = None
+        prioridade_alvo: tuple = (-1, False, 0.0)
         alvos_esperados = {linha.upper() for linha in self.linhas_alvo}
         for leitura in self.detector.ler():
             casada = casar_linha(leitura.texto, self.vocabulario())
-            if casada:
+            if casada and not leitura.rastreada:  # a votação só conta leituras novas do OCR
                 confianca = leitura.confianca * casada[1]
                 if melhor is None or confianca > melhor[1]:
                     melhor = (casada[0], confianca)
             if leitura.x is not None:
-                # segue primeiro o ônibus esperado, depois qualquer linha conhecida, depois qualquer letreiro
+                # segue primeiro o ônibus esperado, depois qualquer linha conhecida, depois qualquer
+                # letreiro; no empate, a leitura nova do OCR ganha da posição rastreada
                 nivel = 2 if casada and casada[0] in alvos_esperados else 1 if casada else 0
-                if (nivel, leitura.confianca) > prioridade_alvo:
-                    prioridade_alvo = (nivel, leitura.confianca)
+                prioridade = (nivel, not leitura.rastreada, leitura.confianca)
+                if prioridade > prioridade_alvo:
+                    prioridade_alvo = prioridade
+                    leitura_alvo = leitura
                     alvo = (leitura.x, leitura.y if leitura.y is not None else 0.5, casada[0] if casada else None)
+        if leitura_alvo is not None and not leitura_alvo.rastreada and leitura_alvo.caixa is not None:
+            seguir = getattr(self.detector, "seguir", None)
+            if seguir is not None:
+                seguir(leitura_alvo.caixa, alvo[2] or leitura_alvo.texto)
         self._mirar(alvo)
         if not self.ativo:
             return None
@@ -106,4 +114,4 @@ class ServicoCamera:
                 self.status()
                 ultimo_status = time.monotonic()
             self.passo()
-            time.sleep(0.1 if self.ativo else 1.0)
+            time.sleep(0.05 if self.ativo or self.mirar_sempre else 1.0)

@@ -1,5 +1,8 @@
-# Só no notebook do ponto, para usar a webcam com o modelo da equipe de Visão.
+# Só no notebook do ponto, para usar a webcam.
+# Depois de instalar, rode iniciar.ps1 (ou veja o README) para ficar com o OpenCV com janela:
+# o EasyOCR puxa a versão sem janela (headless) e as duas brigam pelo mesmo módulo cv2.
 -r requirements.txt
-opencv-python-headless
-ultralytics
+numpy
+opencv-python
 easyocr
+ultralytics
