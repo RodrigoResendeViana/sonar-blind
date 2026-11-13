@@ -179,10 +179,10 @@ jobs:
           path: ~/.platformio
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
       - run: pip install platformio
-      - name: Compilar o Sonar Ponto, o Sonar Bordo e o Sonar Braço
+      - name: Compilar o Sonar Ponto, o Sonar Bordo, o Sonar Braço e a Sonar Câmera
         run: |
           cp include/secrets.example.h include/secrets.h
-          pio run -e ponto -e bordo -e braco
+          pio run -e ponto -e bordo -e braco -e camera
 
   iac:
     name: IaC (Terraform e Trivy)
