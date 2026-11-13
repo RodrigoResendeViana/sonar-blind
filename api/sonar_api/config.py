@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     ia_url: str = ""
     ia_timeout_s: float = 20.0
 
+    # gatilho do robô de RPA (n8n): avisado na hora em que o passageiro consente a reclamação
+    rpa_webhook_url: str = ""
+
     token_servico: str = ""
     sal_hash: str = ""
 
