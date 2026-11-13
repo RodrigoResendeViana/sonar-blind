@@ -38,3 +38,8 @@ firmware/.vscode/
 visao/dados/*/
 visao/execucoes/
 *.pt
+
+# Visão: letreiros gerados para imprimir
+visao/impressao/
+# notebook do ponto: ambiente virtual
+edge/.venv/
