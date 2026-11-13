@@ -206,7 +206,9 @@ if tem_perfil rpa && [ -d "$COMPOSE_DIR/../../rpa/n8n" ]; then
   # o repositório é a fonte da verdade dos fluxos: mudou no editor do n8n, exporte para rpa/n8n
   log "importando e publicando os fluxos do n8n (rpa/n8n)"
   for _ in $(seq 1 30); do
-    docker compose exec -T n8n wget -qO- http://127.0.0.1:5678/healthz >/dev/null 2>&1 && break
+    docker compose exec -T n8n node -e \
+      "fetch('http://127.0.0.1:5678/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" \
+      >/dev/null 2>&1 && break
     sleep 2
   done
   N8N_OK=1

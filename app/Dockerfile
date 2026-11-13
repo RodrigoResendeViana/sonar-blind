@@ -25,4 +25,4 @@ RUN apk add --no-cache libcap \
 COPY --from=build /app/dist /srv
 USER 10001:10001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["wget", "-q", "--spider", "http://127.0.0.1/"]
+  CMD ["wget", "-q", "--spider", "http://127.0.0.1:2020/"]
