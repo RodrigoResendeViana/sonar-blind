@@ -12,6 +12,7 @@ TAG="${1:?uso: deploy.sh <tag-da-imagem>}"
 export AWS_DEFAULT_REGION="${AWS_REGION:-us-east-1}"
 COMPOSE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SEGREDOS=/opt/sonar/segredos
+DADOS=/opt/sonar/dados
 REGISTRO="${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}"
 IMAGEM_MOSQUITTO="eclipse-mosquitto:2"
 UID_MOSQUITTO=1883
@@ -34,7 +35,7 @@ seguro() {
 umask 077
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-install -d -m 755 /opt/sonar "$SEGREDOS"
+install -d -m 755 /opt/sonar "$SEGREDOS" "$DADOS"
 install -d -m 750 -o "$UID_MOSQUITTO" -g "$UID_MOSQUITTO" "$SEGREDOS/mosquitto" "$SEGREDOS/mosquitto/certs"
 install -d -m 750 -o "$UID_NOBODY" -g "$UID_NOBODY" "$SEGREDOS/alertmanager"
 
@@ -79,6 +80,33 @@ if tem_perfil rpa; then
   fi
 fi
 log "perfis extras: ${PERFIS:-nenhum}"
+
+# GTFS da SPTrans (planejador com as linhas reais). O arquivo pede login no site da SPTrans, então
+# ele chega por uma URL guardada no Parameter Store (ex.: link pré-assinado do S3). Baixa de novo
+# quando a URL muda ou o arquivo passa de 7 dias.
+GTFS_URL="$(parametro_opcional /sonar/gtfs/url)"
+GTFS_ARQUIVO=""
+if [ -n "$GTFS_URL" ]; then
+  case "$GTFS_URL" in https://*) ;; *) falhar "/sonar/gtfs/url precisa começar com https://" ;; esac
+  MARCA="$(printf '%s' "$GTFS_URL" | sha256sum | cut -c1-16)"
+  if [ ! -s "$DADOS/gtfs.zip" ] || [ "$(cat "$DADOS/gtfs.marca" 2>/dev/null)" != "$MARCA" ] ||
+    [ -n "$(find "$DADOS/gtfs.zip" -mtime +7 2>/dev/null)" ]; then
+    log "baixando o GTFS da SPTrans"
+    if curl -fsSL --max-time 300 -o "$TMP/gtfs.zip" "$GTFS_URL" &&
+      python3 -c 'import sys, zipfile; n = set(zipfile.ZipFile(sys.argv[1]).namelist()); sys.exit(0 if {"stops.txt", "trips.txt", "stop_times.txt", "routes.txt"} <= n else 1)' "$TMP/gtfs.zip"; then
+      install -m 644 "$TMP/gtfs.zip" "$DADOS/gtfs.zip"
+      printf '%s' "$MARCA" >"$DADOS/gtfs.marca"
+    else
+      log "AVISO: não consegui baixar um GTFS válido; sigo com o que já havia (se houver)"
+    fi
+  fi
+fi
+if [ -s "$DADOS/gtfs.zip" ]; then
+  GTFS_ARQUIVO=/dados/gtfs.zip
+  log "planejador com as linhas reais da SPTrans (GTFS de $(date -r "$DADOS/gtfs.zip" +%d/%m))"
+else
+  log "AVISO: sem /sonar/gtfs/url: o planejador usa só a rede de demonstração"
+fi
 
 log "gerando usuários e ACL do Mosquitto"
 aws ssm get-parameters-by-path --path /sonar/mqtt/usuarios --with-decryption \
@@ -148,6 +176,8 @@ SONAR_TOKEN_SERVICO='$TOKEN_SERVICO'
 SONAR_SAL_HASH='$SAL_HASH'
 SONAR_IA_URL='$IA_URL'
 SONAR_RPA_WEBHOOK_URL='$RPA_WEBHOOK'
+SONAR_DADOS_DIR='$DADOS'
+SONAR_GTFS_ARQUIVO='$GTFS_ARQUIVO'
 SONAR_IA_MODELO='${IA_MODELO:-qwen2.5:3b}'
 SONAR_GRAFANA_PASSWORD='$GRAFANA_SENHA'
 SONAR_N8N_CHAVE='$N8N_CHAVE'
