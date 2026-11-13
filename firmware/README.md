@@ -38,7 +38,8 @@ Material: ESP32 DevKit, 2 servos SG90 ou MG90S, suporte pan-tilt, fonte 5 V / 2 
 webcam ──USB──▶ notebook: YOLO acha o letreiro ──MQTT sonar/parada/demo/mira {x, y}──▶ ESP32 ──PWM──▶ servos
 ```
 
-O ESP32 não roda visão computacional: o notebook faz o YOLO + OCR (`edge/`) e manda só a posição.
+O ESP32 não roda visão computacional: o notebook acha e lê o letreiro (OCR, ou YOLO + OCR quando o
+modelo existir), rastreia entre uma leitura e outra (`edge/`) e manda só a posição.
 Com `CAMERA_NO_BRACO 1` (padrão), a câmera gira junto e o braço corrige até o letreiro ficar no
 meio do quadro (controle proporcional com zona morta e velocidade limitada). Com `0`, a câmera fica
 parada e o braço só aponta para onde o letreiro está. Ganhos e limites ficam em `include/config.h`.
@@ -84,6 +85,9 @@ O contrato completo está em [`docs/contratos.md`](../docs/contratos.md).
 | `sonar/onibus/{prefixo}/ciente` | Sonar Bordo | `{espera_id, horario}` |
 | `sonar/onibus/{prefixo}/status` | Sonar Bordo (retido) | sinal de vida |
 
+O passo a passo da montagem, a lista de materiais e a calibração estão em
+[`docs/maker-lab.md`](../docs/maker-lab.md).
+
 ## Configurar e gravar
 
 1. Instale o VS Code com a extensão PlatformIO.
@@ -91,8 +95,9 @@ O contrato completo está em [`docs/contratos.md`](../docs/contratos.md).
    ```
    aws ssm get-parameter --name /sonar/mqtt/usuarios/ponto-demo --with-decryption --query Parameter.Value --output text
    aws ssm get-parameter --name /sonar/mqtt/usuarios/bordo-90001 --with-decryption --query Parameter.Value --output text
+   aws ssm get-parameter --name /sonar/mqtt/usuarios/braco-demo --with-decryption --query Parameter.Value --output text
    ```
-3. `pio run -e ponto -t upload` e `pio run -e bordo -t upload`. Monitor serial: `pio device monitor`.
+3. `pio run -e ponto -t upload`, `pio run -e bordo -t upload` e `pio run -e braco -t upload`. Monitor serial: `pio device monitor`.
 
 Com a parada `demo` e o prefixo `90001`, o hardware participa do modo demonstração do app: o cenário "maquete" (`POST /api/demo/esperas` com `{"cenario":"maquete"}`) manda a previsão e o aviso, e quem confirma é o botão do Bordo e o ultrassom do Ponto.
 
@@ -101,8 +106,8 @@ Com a parada `demo` e o prefixo `90001`, o hardware participa do modo demonstra�
 ## Wokwi
 
 1. Instale a extensão Wokwi no VS Code.
-2. Compile a versão do simulador: `pio run -e ponto_wokwi` (ou `bordo_wokwi`). Ela usa a rede `Wokwi-GUEST`.
-3. Abra `wokwi/ponto/diagram.json` (ou `wokwi/bordo/diagram.json`) e clique em play. No Ponto, clique no HC-SR04 para mudar a distância e "encostar" um ônibus.
+2. Compile a versão do simulador: `pio run -e ponto_wokwi` (ou `bordo_wokwi`, `braco_wokwi`). Ela usa a rede `Wokwi-GUEST`.
+3. Abra `wokwi/ponto/diagram.json` (ou `wokwi/bordo/diagram.json`, `wokwi/braco/diagram.json`) e clique em play. No Ponto, clique no HC-SR04 para mudar a distância e "encostar" um ônibus.
 
 No simulador, o buzzer ativo não faz som (ele espera um sinal de frequência); acompanhe o padrão pelo monitor serial e pelo LED.
 

@@ -106,5 +106,9 @@ passagem, confiança da leitura, horário do aviso e do "ciente". O robô confer
 `PATCH /api/ocorrencias/{id}` e `{"status": "enviada", "protocolo": "..."}` (ou `inconclusiva`,
 `duplicada`, `erro`); o app fala o protocolo para o usuário.
 
+Gatilho: assim que o usuário consente, a API chama `POST {SONAR_RPA_WEBHOOK_URL}` com
+`{"ocorrencia_id": 12}` (no deploy, o webhook interno do n8n), e o robô processa na hora. O robô
+também lê as pendentes a cada 15 minutos, então um aviso perdido só atrasa, não perde a ocorrência.
+
 Status: `aguardando_consentimento` → `pendente` (sim) ou `anonima` (não) → `em_processamento`
 → `enviada` / `inconclusiva` / `duplicada` / `erro`; `descartada` quando o usuário embarcou.
