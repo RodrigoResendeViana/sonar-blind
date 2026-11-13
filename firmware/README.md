@@ -1,11 +1,12 @@
-# Firmware: Sonar Ponto, Sonar Bordo e Sonar Braço
+# Firmware: Sonar Ponto, Sonar Bordo, Sonar Braço e Sonar Câmera
 
-Três ESP32 com framework Arduino, compilados pelo PlatformIO e testáveis no Wokwi antes da montagem.
+Quatro ESP32 com framework Arduino, compilados pelo PlatformIO e testáveis no Wokwi antes da montagem.
 
 | Placa | O que faz |
 |---|---|
 | **Sonar Ponto** | Junta a leitura do letreiro (câmera, por MQTT) com o ultrassom. Pisca o LED para o motorista enquanto há espera, apita para o usuário achar o poste e publica cada passagem com o tempo parado. |
 | **Sonar Bordo** | O bipper na cabine: toca, acende o LED, mostra a parada no OLED e publica o "ciente" quando o motorista aperta o botão. |
+| **Sonar Câmera** (opcional) | ESP32-CAM na cabeça do braço: transmite o vídeo sem fio para o notebook do ponto (MJPEG na rede local, com token). Quem lê o letreiro continua sendo o notebook. |
 | **Sonar Braço** (Maker Lab) | Cabeça pan-tilt com 2 servos que segue o letreiro: recebe do serviço da câmera a posição do letreiro no quadro e gira para mantê-lo no centro. Varre de um lado para o outro enquanto há espera e nenhum letreiro à vista. |
 
 ## Ligações
@@ -16,6 +17,7 @@ Três ESP32 com framework Arduino, compilados pelo PlatformIO e testáveis no Wo
 | Ponto | HC-SR04 ECHO, **pelo divisor 1 kΩ / 2 kΩ** (o eco sai em 5 V) | GPIO 27 |
 | Ponto | LED de alto brilho (com resistor de 220 Ω) | GPIO 16 |
 | Ponto | Buzzer ativo | GPIO 25 |
+| Ponto | Botão "tem passageiro" (para o GND, pull-up interno) | GPIO 32 |
 | Bordo | Buzzer ativo | GPIO 25 |
 | Bordo | LED | GPIO 2 (LED da placa) |
 | Bordo | Botão "ciente" para o GND (pull-up interno) | GPIO 33 |

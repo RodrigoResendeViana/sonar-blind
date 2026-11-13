@@ -25,3 +25,8 @@
 // Sonar Braço (Maker Lab): mesma parada do Sonar Ponto
 #define MQTT_USUARIO_BRACO "braco-demo"
 #define MQTT_SENHA_BRACO "cole-a-senha-do-parameter-store"
+
+// Sonar Câmera (ESP32-CAM na cabeça do braço): token que o notebook põe na URL do vídeo.
+// Troque por um texto aleatório (ex.: python -c "import secrets; print(secrets.token_urlsafe(16))").
+#define CAMERA_TOKEN "troque-por-um-texto-aleatorio"
+#define CAMERA_VIRAR 0  // 1 se a imagem aparecer de cabeça para baixo
