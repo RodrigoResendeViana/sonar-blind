@@ -52,13 +52,23 @@ groups:
         annotations:
           resumo: "p95 da API acima de 1 s há 10 min."
 
+      # o LLM roda na CPU da EC2: até ~15 s é o esperado; acima disso o agente estoura o prazo
+      # e a API responde pelas regras (veja sonar_ia_respostas_total{modo="servico_regras"})
       - alert: IALenta
-        expr: histogram_quantile(0.95, sum by (le) (rate(sonar_ia_latencia_segundos_bucket[5m]))) > 8
+        expr: histogram_quantile(0.95, sum by (le) (rate(sonar_ia_latencia_segundos_bucket[5m]))) > 15
         for: 5m
         labels:
           severidade: media
         annotations:
-          resumo: "A IA está levando mais de 8 s (p95) para responder."
+          resumo: "A IA está levando mais de 15 s (p95) para responder."
+
+      - alert: IACaindoParaRegras
+        expr: sum(rate(sonar_ia_respostas_total{modo="servico_regras"}[15m])) / sum(rate(sonar_ia_respostas_total{modo=~"servico.*"}[15m])) > 0.5
+        for: 15m
+        labels:
+          severidade: media
+        annotations:
+          resumo: "Mais da metade das perguntas está sendo respondida pelas regras: o agente de IA está falhando ou lento."
 
       - alert: MemoriaDaEC2
         expr: node_memory_MemAvailable_bytes{job="sonar-ec2"} / node_memory_MemTotal_bytes{job="sonar-ec2"} < 0.10
