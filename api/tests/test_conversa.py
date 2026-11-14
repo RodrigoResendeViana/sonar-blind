@@ -1,6 +1,7 @@
 import time
 
 import pytest
+from conftest import ler_sse
 from fastapi.testclient import TestClient
 from sonar_api.conversa import entender
 from sonar_api.main import create_app
@@ -171,3 +172,44 @@ def test_botao_pelo_mqtt(sonar, cliente):
     sonar.receber_mqtt("sonar/parada/demo/evento", {"tipo": "botao"})
     ativas = [e for e in cliente.get("/painel/indicadores").json()["por_linha"]]
     assert ativas  # a espera do botão entrou nas estatísticas
+
+
+PASSAGEM_PAROU = {"linha_lida": "DEMO-20", "confianca": 0.93, "tempo_parado_s": 3.1, "parou": True}
+
+
+def _ate_o_ponto(falar) -> dict:
+    falar("quero ir para o hospital")
+    falar("sim")
+    return falar("cheguei")
+
+
+def test_camera_do_celular_sem_o_sonar_ponto(cliente, sonar):
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True, "ativa": False, "sem_ponto": True})
+    no_ponto = _ate_o_ponto(Conversa(cliente))  # cenário automático
+    assert "a câmera do ponto vai ler o letreiro" in no_ponto["fala"]
+    time.sleep(0.8)  # o roteiro simulado já teria "trazido" os ônibus (velocidade 100): não pode rodar
+    sonar.receber_mqtt("sonar/parada/demo/camera/passagem", PASSAGEM_PAROU)
+    sonar.cancelar_espera(no_ponto["espera_id"])
+    eventos = ler_sse(cliente, f"/esperas/{no_ponto['espera_id']}/eventos")
+    chegando = [e for e in eventos if e["tipo"] == "onibus_chegando"]
+    assert len(chegando) == 1 and "É o seu" in chegando[0]["fala"]
+    assert chegando[0]["dados"]["origem"] == "camera"
+
+
+def test_com_o_sonar_ponto_ligado_a_camera_nao_duplica(cliente, sonar):
+    sonar.receber_mqtt("sonar/parada/demo/status", {"online": True})
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True, "sem_ponto": True})
+    no_ponto = _ate_o_ponto(Conversa(cliente, cenario_demo="maquete"))
+    assert "Avisei o ponto: ele vai apitar" in no_ponto["fala"]
+    sonar.receber_mqtt("sonar/parada/demo/camera/passagem", PASSAGEM_PAROU)
+    sonar.cancelar_espera(no_ponto["espera_id"])
+    tipos = [e["tipo"] for e in ler_sse(cliente, f"/esperas/{no_ponto['espera_id']}/eventos")]
+    assert "onibus_chegando" not in tipos
+
+
+def test_camera_comum_sem_ponto_mantem_o_roteiro_simulado(cliente, sonar):
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True})  # sem "sem_ponto"
+    no_ponto = _ate_o_ponto(Conversa(cliente))
+    assert no_ponto["fala"].count("Avisei os motoristas que vêm para cá.") == 1
+    assert "câmera" not in no_ponto["fala"]
+

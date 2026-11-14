@@ -461,16 +461,19 @@ class Conversa:
         sessao.espera_id = espera["id"]
         sessao.estado = "no_ponto"
         sessao.marcos.clear()
-        com_hardware = await self._ponto_online(parada.id)
+        detector = await self._quem_detecta(parada.id)
         if sessao.demo:
-            self._rodar_demo(sessao, espera["id"], parada.id, com_hardware)
+            self._rodar_demo(sessao, espera["id"], parada.id, detector is not None)
 
         abertura = f"Você chegou a{ponto_falado(parada.nome)}. " if chegou_pelo_gps else ""
-        aviso_ponto = (
-            "Avisei o ponto: ele vai apitar para você achar o poste e piscar a luz para o motorista."
-            if com_hardware
-            else "Avisei os motoristas que vêm para cá."
-        )
+        if detector == "ponto":
+            aviso_ponto = "Avisei o ponto: ele vai apitar para você achar o poste e piscar a luz para o motorista."
+        elif detector == "camera":
+            aviso_ponto = (
+                "Avisei os motoristas que vêm para cá, e a câmera do ponto vai ler o letreiro de cada ônibus."
+            )
+        else:
+            aviso_ponto = "Avisei os motoristas que vêm para cá."
         minutos = await self._minutos_proximo(sessao, trecho)
         previsao = f" {self._frase_previsao(linha, minutos)}" if minutos is not None else ""
         return [
@@ -621,17 +624,24 @@ class Conversa:
         resposta = await perguntar_ia(self.sonar, self.http, texto, parada_id)
         return [resposta.resposta_falada]
 
-    async def _ponto_online(self, parada_id: str) -> bool:
+    async def _quem_detecta(self, parada_id: str) -> str | None:
+        """Quem vê o ônibus chegar neste ponto: o Sonar Ponto, a câmera sozinha (ex.: o celular) ou ninguém."""
         try:
             estado = await run_in_threadpool(self.sonar.estado_parada, parada_id)
-        except Exception:  # noqa: BLE001 - só muda a frase
-            return False
-        return any(d.get("tipo") == "ponto" and d.get("online") for d in estado.get("dispositivos", []))
+        except Exception:  # noqa: BLE001 - sem o estado, segue como se não houvesse hardware
+            return None
+        dispositivos = estado.get("dispositivos") or {}  # {"ponto": {...}, "camera": {...}}
+        if (dispositivos.get("ponto") or {}).get("online"):
+            return "ponto"
+        camera = dispositivos.get("camera") or {}
+        if camera.get("online") and camera.get("sem_ponto"):
+            return "camera"
+        return None
 
     def _rodar_demo(self, sessao: Sessao, espera_id: str, parada_id: str, com_hardware: bool) -> None:
         cenario = sessao.cenario_demo
         if cenario == "auto":
-            # com o Sonar Ponto da maquete ligado, quem detecta o ônibus é o hardware de verdade
+            # com o Sonar Ponto (ou a câmera sozinha) ligado na maquete, quem detecta o ônibus é ele
             cenario = "maquete" if com_hardware else "embarque"
         if cenario == "maquete" and parada_id != demo.PARADA_DEMO:
             cenario = "embarque"  # a maquete só existe no ponto de demonstração

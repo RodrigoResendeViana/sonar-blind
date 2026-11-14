@@ -127,8 +127,9 @@ while IFS=$'\t' read -r nome senha; do
         "$usuario" "$p" "$p" "$p" "$p" "$p" ;;
     camera-*)
       p="${usuario#camera-}"
-      printf 'user %s\ntopic write sonar/parada/%s/visao\ntopic write sonar/parada/%s/mira\ntopic write sonar/parada/%s/camera/status\ntopic read sonar/parada/%s/cmd\n\n' \
-        "$usuario" "$p" "$p" "$p" "$p" ;;
+      # camera/passagem: a câmera sem o Sonar Ponto (ex.: o celular) avisa sozinha a chegada do ônibus
+      printf 'user %s\ntopic write sonar/parada/%s/visao\ntopic write sonar/parada/%s/mira\ntopic write sonar/parada/%s/camera/status\ntopic write sonar/parada/%s/camera/passagem\ntopic read sonar/parada/%s/cmd\n\n' \
+        "$usuario" "$p" "$p" "$p" "$p" "$p" ;;
     braco-*)
       p="${usuario#braco-}"
       printf 'user %s\ntopic read sonar/parada/%s/mira\ntopic read sonar/parada/%s/cmd\ntopic write sonar/parada/%s/braco/status\n\n' \
