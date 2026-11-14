@@ -9,6 +9,7 @@ depois de 3 quadros seguidos iguais e publica só o texto em `sonar/parada/{id}/
 ```
 
 Nenhuma imagem sai do notebook. O Sonar Ponto (ESP32) junta essa leitura com o ultrassom e decide.
+Sem o Sonar Ponto, a câmera decide sozinha (`--sem-ponto`, veja abaixo).
 
 Em paralelo, a cada quadro com letreiro, publica a posição dele em `sonar/parada/{id}/mira`
 (até ~7 vezes por segundo) para o **Sonar Braço** (Maker Lab) girar a câmera e seguir o ônibus:
@@ -52,6 +53,36 @@ Na primeira vez, o script cria o `.venv` e instala tudo (alguns minutos). A senh
 na hora e não fica gravada; pegue no CloudShell:
 `aws ssm get-parameter --name /sonar/mqtt/usuarios/camera-demo --with-decryption --query Parameter.Value --output text`.
 
+## Sem o Sonar Ponto: câmera do celular
+
+Com `-SemPonto` (`--sem-ponto`), a câmera faz o papel do ultrassom: o letreiro na frente dela é o
+ônibus no ponto. Letreiro parado por 3 s = **parou** (avisa na hora, com o ônibus ainda no ponto);
+letreiro que some antes disso, atravessando o quadro = **passou direto** (o passageiro pode
+reclamar). O aviso vai em `sonar/parada/{id}/camera/passagem`:
+
+```json
+{"linha_lida": "DEMO-20", "confianca": 0.93, "tempo_parado_s": 3.1, "parou": true, "passou_em": "2026-11-14T13:05:00Z"}
+```
+
+A API só usa esse aviso quando o Sonar Ponto da parada está offline (com ele ligado, quem decide é
+ele) e, na demonstração, deixa de simular os ônibus enquanto a câmera estiver ligada nesse modo.
+
+Celular como câmera (Android ou iPhone):
+
+1. Instale o **DroidCam** no celular (no Android, o **IP Webcam** também serve, na porta 8080) e
+   deixe celular e notebook na mesma rede Wi-Fi. Se a rede da faculdade isolar os aparelhos, ligue
+   o notebook no roteador do celular.
+2. Abra o app: ele mostra o IP. Confira no navegador do notebook: `http://IP:4747/video`.
+3. No notebook: `.\iniciar.ps1 -SemPonto -Camera "http://IP:4747/video"`.
+4. No app do passageiro (o navegador do notebook serve): "quero ir para o hospital" → "sim" →
+   "cheguei". A câmera liga (ela só lê com alguém esperando).
+5. Aponte o celular para os letreiros impressos (`python visao/imprimir.py`):
+   - DEMO-10 parado na frente → "Chegando agora: linha DEMO-10. Não é o seu."
+   - DEMO-20 parado por 3 s → "Chegando agora: linha DEMO-20. É o seu."
+   - DEMO-20 passando pelo quadro sem parar → "passou sem parar. Quer registrar uma reclamação?"
+
+Deixe "Mais opções" → cenário em **automático**: os outros cenários simulam os ônibus por conta própria.
+
 ## Rodar no Linux/macOS
 
 ```bash
@@ -67,6 +98,7 @@ export SONAR_MQTT_SENHA='...'   # do Parameter Store
 python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20                    # digite a linha no terminal
 python -m sonar_camera --parada demo --linhas DEMO-10 --mirar-sempre              # DEMO-10@0.2 = letreiro à esquerda
 python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 --modo webcam --janela
+python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 --modo webcam --janela --sem-ponto --camera http://IP:4747/video
 ```
 
 Para testar contra o compose local (sem TLS): `SONAR_MQTT_HOST=localhost SONAR_MQTT_PORTA=1883 SONAR_MQTT_TLS=0`.

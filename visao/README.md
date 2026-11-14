@@ -48,6 +48,9 @@ letreiro em tudo.
 
 1. Juntar 150 a 300 fotos de ônibus com o letreiro visível (rua, vídeos, sites de transporte), de
    dia e de noite, de frente e de lado.
+   Mais rápido: grave com o celular vídeos curtos de ônibus chegando a um ponto, com o zoom só no
+   letreiro (sem rostos nem placas no quadro); no upload, o Roboflow separa o vídeo em quadros
+   (1 por segundo basta).
 2. **Borrar rostos e placas de carro antes de subir** (LGPD); não usar fotos de pessoas identificáveis.
 3. No Roboflow: projeto de *Object Detection*, classe única **`letreiro`**, caixa só no painel do
    letreiro (não no ônibus inteiro). Exportar em **YOLOv8/YOLO11** e descompactar em `dados/roboflow/`.

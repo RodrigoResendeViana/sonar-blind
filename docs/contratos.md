@@ -84,7 +84,8 @@ Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<para
 | `sonar/parada/{id}/visao` | câmera → Sonar Ponto | `{"linha_lida","confianca","passou_em"}` (só texto; nenhuma imagem) |
 | `sonar/parada/{id}/evento` | Sonar Ponto → API | passagem: `{"espera_id","linha_lida","confianca","passou_em","tempo_parado_s","parou","camera_ok"}`; botão do poste: `{"tipo":"botao","em"}` (a API avisa os motoristas de todas as linhas do ponto por 10 min) |
 | `sonar/parada/{id}/status` | Sonar Ponto → API (retido, 30 s) | `{"online","estado","rssi","uptime_s","fila","camera_ok","versao"}`; a queda vira `{"online":false}` (testamento MQTT) |
-| `sonar/parada/{id}/camera/status` | câmera → API e Ponto (retido) | `{"online","ativa"}` |
+| `sonar/parada/{id}/camera/status` | câmera → API e Ponto (retido) | `{"online","ativa"}`; com `--sem-ponto`, também `"sem_ponto":true` |
+| `sonar/parada/{id}/camera/passagem` | câmera sem o Sonar Ponto → API | `{"linha_lida","confianca","passou_em","tempo_parado_s","parou"}`: letreiro parado 3 s = parou (avisa na hora); sumiu antes = passou direto. A API ignora se o Sonar Ponto da parada estiver online |
 | `sonar/parada/{id}/mira` | câmera → braço (até ~7/s) | `{"alvo":true,"x":0.42,"y":0.5,"linha":"DEMO-10"}` (centro do letreiro, 0 a 1) ou `{"alvo":false}` quando o letreiro some por 1 s |
 | `sonar/parada/{id}/braco/status` | braço → API (retido) | `{"online","modo","pan","tilt"}` |
 | `sonar/onibus/{prefixo}/alerta` | API → Sonar Bordo | `{"espera_id","parada_nome","paradas_ate","linha"}` |

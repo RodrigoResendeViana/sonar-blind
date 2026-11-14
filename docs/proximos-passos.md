@@ -27,6 +27,7 @@ sem app ou sem internet: o botão do poste avisa todos os motoristas
 | Botão do poste | no firmware do Sonar Ponto e na tela "Ponto (simulado)" |
 | Braço que segue o letreiro, ESP32-CAM opcional | firmware pronto; falta montar e calibrar |
 | Visão | funciona só com OCR; o modelo YOLO melhora (passo 4) |
+| Câmera do celular no lugar do hardware | pronta: `.\iniciar.ps1 -SemPonto -Camera "http://IP:4747/video"` (passo 4) |
 
 ## 1. Publicar e testar a jornada (Rodrigo, ~15 min)
 
@@ -71,6 +72,11 @@ universidade, mercado) ou fale "exemplo" no destino: o plano sai da maquete.
 
 Tudo em `docs/maker-lab.md`: material, ligações, Wokwi, gravação e calibração.
 
+**Sem montar o hardware:** o Wokwi roda o firmware de verdade (ESP32, Wi-Fi e MQTT) e conversa com o
+Sonar no ar (seção 2 de `docs/maker-lab.md`). O Tinkercad não tem ESP32, só Arduino: lá dá para
+mostrar os circuitos (servos, botão, LED, buzzer, ultrassom), mas não a ligação com o Sonar. Na
+demonstração, a câmera do celular faz o papel do Sonar Ponto (passo 4).
+
 1. **Sonar Ponto** com o botão do poste (GPIO 32), LED, buzzer e ultrassom.
 2. **Sonar Braço** (2 servos, fonte 5 V externa) com a webcam presa na cabeça, ou a **ESP32-CAM**
    (`pio run -e camera`), que manda o vídeo sem fio para o notebook.
@@ -83,6 +89,17 @@ Tudo em `docs/maker-lab.md`: material, ligações, Wokwi, gravação e calibraç
 
 `visao/README.md`: dataset sintético (sem rotular), fotos reais no Roboflow, treino no Colab,
 métricas. O serviço da câmera usa o modelo sozinho quando `edge/modelos/letreiro.pt` existe.
+
+**Câmera do celular, sem hardware** (detalhes em `edge/README.md`):
+
+1. DroidCam no celular (Android ou iPhone), celular e notebook na mesma rede.
+2. `cd edge` e `.\iniciar.ps1 -SemPonto -Camera "http://IP_DO_CELULAR:4747/video"`.
+3. No app (no navegador do notebook): "quero ir para o hospital" → "sim" → "cheguei".
+4. Letreiros impressos na frente do celular: DEMO-10 parado → "não é o seu"; DEMO-20 parado 3 s →
+   "é o seu"; DEMO-20 atravessando o quadro → "passou sem parar" → "quero reclamar".
+
+Para as fotos reais do dataset, grave vídeos curtos de ônibus chegando a um ponto (zoom só no
+letreiro, sem rostos nem placas no quadro): o Roboflow separa o vídeo em quadros no upload.
 
 ## 5. IA generativa
 
@@ -97,6 +114,10 @@ agora incluem planejamento ("preciso ir ao hospital, como eu faço?").
 4. "Embarquei" → "prepare-se para descer" → baldeação → "você chegou".
 5. Outra rodada: o ônibus passa direto → "quero reclamar" → protocolo falado.
 6. O botão do poste sem o app; fechar no Grafana e no pipeline verde.
+
+Sem o hardware, os passos 2 e 3 viram: a câmera do celular lendo o letreiro impresso (com a janela
+do `iniciar.ps1` mostrando a caixa e a linha lida) e o app falando "não é o seu" / "é o seu"; o
+Maker Lab entra com a gravação da simulação.
 
 ## 7. Relatórios
 
