@@ -68,3 +68,8 @@ class Votacao:
             return None  # é o mesmo ônibus ainda parado na frente da câmera
         self._ultima = (linha, agora)
         return linha, media
+
+    def esquecer(self) -> None:
+        """O ônibus foi embora: se a mesma linha aparecer de novo, é outro ônibus."""
+        self._janela.clear()
+        self._ultima = None
