@@ -73,9 +73,10 @@ universidade, mercado) ou fale "exemplo" no destino: o plano sai da maquete.
 Tudo em `docs/maker-lab.md`: material, ligações, Wokwi, gravação e calibração.
 
 **Sem montar o hardware:** o Wokwi roda o firmware de verdade (ESP32, Wi-Fi e MQTT) e conversa com o
-Sonar no ar (seção 2 de `docs/maker-lab.md`). O Tinkercad não tem ESP32, só Arduino: lá dá para
-mostrar os circuitos (servos, botão, LED, buzzer, ultrassom), mas não a ligação com o Sonar. Na
-demonstração, a câmera do celular faz o papel do Sonar Ponto (passo 4).
+Sonar no ar. O braço roda até no navegador (wokwi.com), seguindo o letreiro que a câmera do celular
+vê (seção 2 de `docs/maker-lab.md`). O Tinkercad não tem ESP32, só Arduino: lá dá para mostrar os
+circuitos, mas não a ligação com o Sonar. Na demonstração, a câmera do celular faz o papel do
+Sonar Ponto (passo 4).
 
 1. **Sonar Ponto** com o botão do poste (GPIO 32), LED, buzzer e ultrassom.
 2. **Sonar Braço** (2 servos, fonte 5 V externa) com a webcam presa na cabeça, ou a **ESP32-CAM**
