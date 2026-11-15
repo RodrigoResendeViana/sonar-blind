@@ -107,6 +107,9 @@ Com a parada `demo` e o prefixo `90001`, o hardware participa do modo demonstra�
 
 ## Wokwi
 
+Só o navegador: o Sonar Braço também roda em wokwi.com, com `wokwi/braco/sketch.ino` (um arquivo
+só), `diagram.json` e `libraries.txt` (passo a passo em `docs/maker-lab.md`, seção 2).
+
 1. Instale a extensão Wokwi no VS Code.
 2. Compile a versão do simulador: `pio run -e ponto_wokwi` (ou `bordo_wokwi`, `braco_wokwi`). Ela usa a rede `Wokwi-GUEST`.
 3. Abra `wokwi/ponto/diagram.json` (ou `wokwi/bordo/diagram.json`, `wokwi/braco/diagram.json`) e clique em play. No Ponto, clique no HC-SR04 para mudar a distância e "encostar" um ônibus.

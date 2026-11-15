@@ -284,10 +284,10 @@ export default function Passageiro() {
         </label>
         <label htmlFor="cenario">Demonstração: o que o ônibus faz</label>
         <select id="cenario" value={cenario} onChange={(evento) => mudarCenario(evento.target.value as CenarioDemo)}>
-          <option value="auto">Automático (maquete, se estiver ligada)</option>
+          <option value="auto">Automático (câmera ou maquete, se estiverem ligadas)</option>
           <option value="embarque">O ônibus para</option>
           <option value="nao_parou">O ônibus passa direto</option>
-          <option value="maquete">Só a maquete (câmera e Sonar Ponto de verdade)</option>
+          <option value="maquete">Só a câmera e a maquete de verdade</option>
         </select>
         <button type="button" onClick={() => void enviarSeLivre({ evento: 'fala', texto: 'cancelar' })}>
           Recomeçar

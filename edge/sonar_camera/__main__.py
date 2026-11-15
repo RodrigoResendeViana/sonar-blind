@@ -1,4 +1,4 @@
-"""python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 [--modo webcam] [--janela]
+"""python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 [--modo webcam] [--janela] [--sem-ponto]
 
 Variáveis: SONAR_MQTT_HOST, SONAR_MQTT_PORTA (8883), SONAR_MQTT_USUARIO (camera-<parada>),
 SONAR_MQTT_SENHA e SONAR_MQTT_TLS (1). A senha está no Parameter Store:
@@ -27,7 +27,8 @@ def main() -> None:
     argumentos.add_argument(
         "--camera",
         default="0",
-        help="número da webcam (0, 1...) ou URL do vídeo da ESP32-CAM (http://<ip>:81/stream?t=<token>)",
+        help="número da webcam (0, 1...) ou URL do vídeo: celular com DroidCam (http://<ip>:4747/video) "
+        "ou ESP32-CAM (http://<ip>:81/stream?t=<token>)",
     )
     argumentos.add_argument("--modelo", default="modelos/letreiro.pt")
     argumentos.add_argument(
@@ -39,6 +40,11 @@ def main() -> None:
     argumentos.add_argument("--janela", action="store_true", help="mostra a câmera com o letreiro marcado (para o vídeo)")
     argumentos.add_argument(
         "--mirar-sempre", action="store_true", help="publica a posição do letreiro mesmo sem espera (demo do braço)"
+    )
+    argumentos.add_argument(
+        "--sem-ponto",
+        action="store_true",
+        help="sem o Sonar Ponto: a câmera avisa sozinha a chegada do ônibus (letreiro parado 3 s = parou)",
     )
     opcoes = argumentos.parse_args()
 
@@ -57,7 +63,9 @@ def main() -> None:
         cliente.publish(topico, json.dumps(dados), qos=1, retain=retido)
 
     linhas = [linha.strip() for linha in opcoes.linhas.split(",") if linha.strip()]
-    servico = ServicoCamera(opcoes.parada, detector, publicar, linhas, mirar_sempre=opcoes.mirar_sempre)
+    servico = ServicoCamera(
+        opcoes.parada, detector, publicar, linhas, mirar_sempre=opcoes.mirar_sempre, sem_ponto=opcoes.sem_ponto
+    )
 
     cliente.username_pw_set(os.environ.get("SONAR_MQTT_USUARIO", f"camera-{opcoes.parada}"), os.environ.get("SONAR_MQTT_SENHA"))
     if os.environ.get("SONAR_MQTT_TLS", "1") == "1":
@@ -71,6 +79,8 @@ def main() -> None:
         cli.subscribe(servico.topico_cmd, qos=1)
         servico.status()
         log.info("conectado; aguardando espera ativa na parada %s", opcoes.parada)
+        if opcoes.sem_ponto:
+            log.info("sem o Sonar Ponto: a câmera avisa sozinha quando o ônibus para ou passa direto")
 
     def mensagem(_cli, _dados, msg):
         try:

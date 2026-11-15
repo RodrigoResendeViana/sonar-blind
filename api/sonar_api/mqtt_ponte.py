@@ -24,6 +24,7 @@ TOPICOS_ASSINADOS = [
     "sonar/parada/+/evento",
     "sonar/parada/+/status",
     "sonar/parada/+/camera/status",
+    "sonar/parada/+/camera/passagem",  # câmera sem o Sonar Ponto (ex.: celular)
     "sonar/onibus/+/ciente",
     "sonar/onibus/+/status",
 ]

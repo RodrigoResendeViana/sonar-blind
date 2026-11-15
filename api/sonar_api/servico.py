@@ -748,6 +748,18 @@ class Sonar:
 
     # ------------------------------------------------------------------ Sonar Ponto e câmera
 
+    def passagem_da_camera(self, parada_id: str, dados: dict) -> int:
+        """Câmera trabalhando sem o Sonar Ponto (ex.: o celular): a chegada do ônibus vem dela.
+
+        Com o Ponto ligado, quem decide é ele (junta a leitura com o ultrassom); a câmera não duplica.
+        """
+        with self._leitura() as s:
+            ponto = s.get(Dispositivo, f"ponto:{parada_id}")
+            if ponto is not None and ponto.online:
+                log.info("passagem da câmera ignorada: o Sonar Ponto de %s está ligado", parada_id)
+                return 0
+        return self.processar_deteccao(parada_id, {**dados, "camera_ok": True, "origem": "camera"})
+
     def processar_deteccao(self, parada_id: str, dados: dict) -> int:
         if not self.paradas.existe(parada_id):
             log.warning("detecção de parada desconhecida: %s", parada_id)
@@ -866,7 +878,7 @@ class Sonar:
             dispositivo.ultimo_sinal_em = instante
             dispositivo.dados = {
                 campo: dados[campo]
-                for campo in ("estado", "rssi", "uptime_s", "fila", "camera_ok", "versao")
+                for campo in ("estado", "rssi", "uptime_s", "fila", "camera_ok", "versao", "sem_ponto")
                 if campo in dados
             }
             if estava_online and not online:
@@ -929,6 +941,8 @@ class Sonar:
                 self.atualizar_dispositivo("ponto", ref, dados)
             elif assunto == "camera" and partes[4:] == ["status"]:
                 self.atualizar_dispositivo("camera", ref, dados)
+            elif assunto == "camera" and partes[4:] == ["passagem"]:
+                self.passagem_da_camera(ref, dados)
         elif grupo == "onibus" and len(partes) == 4:
             if assunto == "ciente":
                 self.registrar_ciente(ref, dados)

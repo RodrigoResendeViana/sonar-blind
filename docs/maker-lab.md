@@ -40,6 +40,34 @@ Pinos e tópicos: [`firmware/README.md`](../firmware/README.md). Contratos: [`co
 
 ## 2. Simular antes de montar (Wokwi)
 
+O Wokwi simula o ESP32 com Wi-Fi e saída para a internet: o firmware simulado conversa com o Sonar
+no ar pelo MQTT, como a placa de verdade. O Tinkercad não serve aqui: ele não tem ESP32.
+
+### Braço no navegador (wokwi.com), sem instalar nada
+
+A câmera (o celular, por exemplo) fica no notebook; o ESP32 simulado só recebe a posição do letreiro
+(`mira`) e move os servos. A imagem nunca sai do notebook.
+
+1. Em wokwi.com: **New Project** → **ESP32**.
+2. Cole `firmware/wokwi/braco/sketch.ino` em `sketch.ino` e `firmware/wokwi/braco/diagram.json` em
+   `diagram.json`. Crie o arquivo `libraries.txt` (botão **+** → **New file**) com o conteúdo de
+   `firmware/wokwi/braco/libraries.txt`.
+3. Play. Quando o Serial Monitor pedir, cole a senha do `braco-demo` e tecle Enter (CloudShell:
+   `aws ssm get-parameter --name /sonar/mqtt/usuarios/braco-demo --with-decryption --query Parameter.Value --output text`).
+   No plano gratuito, os projetos do Wokwi são públicos: por isso a senha não vai no código, só na
+   simulação aberta. Espere `[rede] MQTT conectado` (o TLS no simulador leva alguns segundos).
+4. No notebook: `cd edge` e `.\iniciar.ps1 -Braco -Camera "http://IP_DO_CELULAR:4747/video"` (DroidCam
+   no celular; veja `edge/README.md`). Mexa o letreiro impresso na frente do celular: o servo pan
+   acompanha o lado e o tilt, a altura. Sem câmera: `.\iniciar.ps1 -Modo teclado -Braco` e digite
+   `DEMO-10@0.1` e `DEMO-10@0.9`.
+5. Para o passageiro ouvir os avisos ao mesmo tempo, junte `-SemPonto`:
+   `.\iniciar.ps1 -Braco -SemPonto -Camera "http://IP_DO_CELULAR:4747/video"`.
+
+No simulador, a câmera não está presa na cabeça do braço, então o servo aponta direto para a
+posição do letreiro (malha aberta). No braço montado, com a webcam na cabeça, é malha fechada.
+
+### No VS Code (os três dispositivos)
+
 1. VS Code + extensões PlatformIO e Wokwi.
 2. `cd firmware`, copie `include/secrets.example.h` para `include/secrets.h` (o Wokwi usa a rede
    `Wokwi-GUEST`; preencha só as senhas do MQTT).

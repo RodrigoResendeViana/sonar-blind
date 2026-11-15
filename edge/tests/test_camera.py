@@ -114,3 +114,99 @@ def test_mirar_sempre_nao_confirma_linha_sem_espera():
     for _ in range(5):
         servico.passo()
     assert not [d for t, d in publicados if t.endswith("/visao")]
+
+
+# ---------------------------------------------------------------------- sem o Sonar Ponto
+
+
+def _passagens(publicados):
+    return [dados for topico, dados in publicados if topico == "sonar/parada/demo/camera/passagem"]
+
+
+def _rodar(servico, relogio, ate, passo=0.5):
+    while relogio.agora < ate:
+        relogio.agora = round(relogio.agora + passo, 3)
+        servico.passo()
+
+
+def test_sem_ponto_letreiro_parado_avisa_na_hora():
+    relogio = Relogio()
+    servico, publicados = _servico([Leitura("DEMO-20 HOSPITAL", 0.9, 0.5, 0.5)], relogio, sem_ponto=True)
+    servico.status()
+    assert publicados[-1] == ("sonar/parada/demo/camera/status", {"online": True, "ativa": False, "sem_ponto": True})
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-20"]})
+    _rodar(servico, relogio, 2.5)
+    assert not _passagens(publicados)  # já leu a linha, mas o ônibus ainda pode estar só passando
+    _rodar(servico, relogio, 4.0)
+    passagem = _passagens(publicados)[0]
+    assert passagem["linha_lida"] == "DEMO-20" and passagem["parou"] is True
+    assert passagem["tempo_parado_s"] >= 3.0 and set(passagem) == {
+        "linha_lida", "confianca", "tempo_parado_s", "parou", "passou_em",
+    }
+    _rodar(servico, relogio, 10.0)  # continua parado: não repete o aviso
+    servico.detector.leituras = []
+    _rodar(servico, relogio, 13.0)  # foi embora
+    assert len(_passagens(publicados)) == 1
+
+
+def test_sem_ponto_letreiro_que_atravessa_o_quadro_passou_direto():
+    relogio = Relogio()
+    leitura = Leitura("DEMO-20", 0.9, 0.1, 0.5)
+    servico, publicados = _servico([leitura], relogio, sem_ponto=True)
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-20"]})
+    for x in (0.1, 0.25, 0.4, 0.55, 0.7, 0.85):  # o ônibus andando na frente da câmera
+        servico.detector.leituras = [Leitura("DEMO-20", 0.9, x, 0.5)]
+        relogio.agora += 0.5
+        servico.passo()
+    servico.detector.leituras = []
+    _rodar(servico, relogio, relogio.agora + 1.5)
+    assert not _passagens(publicados)  # sumiu há pouco: ainda pode ser o letreiro piscando
+    _rodar(servico, relogio, relogio.agora + 1.5)
+    passagem = _passagens(publicados)[0]
+    assert passagem["linha_lida"] == "DEMO-20" and passagem["parou"] is False
+    assert passagem["tempo_parado_s"] < 3.0
+
+
+def test_sem_ponto_mesma_linha_de_novo_e_outro_onibus():
+    relogio = Relogio()
+    servico, publicados = _servico([Leitura("DEMO-10", 0.9, 0.5, 0.5)], relogio, sem_ponto=True)
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-20"]})
+    _rodar(servico, relogio, 5.0)
+    servico.detector.leituras = []
+    _rodar(servico, relogio, 8.0)
+    servico.detector.leituras = [Leitura("DEMO-10", 0.9, 0.5, 0.5)]
+    _rodar(servico, relogio, 13.0)
+    assert [p["linha_lida"] for p in _passagens(publicados)] == ["DEMO-10", "DEMO-10"]
+
+
+def test_sem_ponto_texto_que_nao_e_linha_nao_vira_onibus():
+    relogio = Relogio()
+    servico, publicados = _servico([Leitura("FARMACIA", 0.9, 0.5, 0.5)], relogio, sem_ponto=True)
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-20"]})
+    _rodar(servico, relogio, 6.0)
+    servico.detector.leituras = []
+    _rodar(servico, relogio, 10.0)
+    assert not _passagens(publicados)
+
+
+def test_com_o_ponto_a_camera_nao_avisa_passagem():
+    relogio = Relogio()
+    servico, publicados = _servico([Leitura("DEMO-20", 0.9, 0.5, 0.5)], relogio)
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-20"]})
+    _rodar(servico, relogio, 6.0)
+    servico.detector.leituras = []
+    _rodar(servico, relogio, 10.0)
+    assert not _passagens(publicados)
+    assert [t for t, _ in publicados if t.endswith("/visao")]  # quem decide é o Ponto
+
+
+def test_sem_ponto_trocar_o_letreiro_e_outro_onibus():
+    relogio = Relogio()
+    servico, publicados = _servico([Leitura("DEMO-10", 0.9, 0.5, 0.5)], relogio, sem_ponto=True)
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-20"]})
+    _rodar(servico, relogio, 4.0)  # DEMO-10 parado: "não é o seu"
+    servico.detector.leituras = [Leitura("DEMO-20", 0.9, 0.52, 0.5)]  # trocou sem sair do quadro
+    _rodar(servico, relogio, 9.0)
+    assert [(p["linha_lida"], p["parou"]) for p in _passagens(publicados)] == [("DEMO-10", True), ("DEMO-20", True)]
+    visoes = [d["linha_lida"] for t, d in publicados if t.endswith("/visao")]
+    assert visoes == ["DEMO-10", "DEMO-20"]  # sem repetir a mesma leitura
