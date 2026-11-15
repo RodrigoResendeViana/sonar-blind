@@ -69,15 +69,19 @@ fi
 RPA_WEBHOOK=""
 if tem_perfil rpa; then
   RPA_WEBHOOK="http://n8n:5678/webhook/sonar-ocorrencia"
-  if [ -z "$N8N_CHAVE" ]; then
-    # sem o terraform apply que cria /sonar/n8n/chave: gera uma chave e guarda no disco da EC2
-    # (precisa ser sempre a mesma, porque cifra as credenciais que o n8n guarda)
-    if [ ! -s "$SEGREDOS/n8n_chave" ]; then
-      head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40 >"$SEGREDOS/n8n_chave"
-      chmod 600 "$SEGREDOS/n8n_chave"
+  # A chave cifra as credenciais que o n8n guarda: depois do 1º uso ela não pode mudar, senão o
+  # n8n não sobe ("Mismatching encryption keys"). Por isso fica no disco da EC2 desde o 1º deploy:
+  # vem de /sonar/n8n/chave se ele já existir, ou é gerada aqui (deploy antes do terraform apply).
+  if [ ! -s "$SEGREDOS/n8n_chave" ]; then
+    if [ -n "$N8N_CHAVE" ]; then
+      (umask 077 && printf '%s' "$N8N_CHAVE" >"$SEGREDOS/n8n_chave")
+    else
+      (umask 077 && head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40 >"$SEGREDOS/n8n_chave")
     fi
-    N8N_CHAVE="$(cat "$SEGREDOS/n8n_chave")"
+  elif [ -n "$N8N_CHAVE" ] && [ "$N8N_CHAVE" != "$(cat "$SEGREDOS/n8n_chave")" ]; then
+    log "AVISO: /sonar/n8n/chave é diferente da chave que o n8n já usa; mantendo a do disco"
   fi
+  N8N_CHAVE="$(cat "$SEGREDOS/n8n_chave")"
 fi
 log "perfis extras: ${PERFIS:-nenhum}"
 
