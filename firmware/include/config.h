@@ -40,7 +40,9 @@
 #define PINO_SERVO_TILT 19
 #define PINO_POT 34            // potenciômetro para o modo manual (só entrada, ADC1)
 #define USAR_POT 1             // 0 se não houver potenciômetro (pino solto gera ruído)
+#ifndef CAMERA_NO_BRACO
 #define CAMERA_NO_BRACO 1      // 1: webcam presa na cabeça (malha fechada); 0: câmera fixa ao lado
+#endif
 #define PAN_MIN 20.0f
 #define PAN_MAX 160.0f
 #define PAN_CENTRO 90

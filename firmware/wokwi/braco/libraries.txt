@@ -1,0 +1,4 @@
+# Bibliotecas do sketch.ino no wokwi.com
+ArduinoJson
+ESP32Servo
+PubSubClient
