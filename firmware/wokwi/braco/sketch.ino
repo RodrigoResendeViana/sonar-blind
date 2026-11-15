@@ -183,6 +183,20 @@ void aoChegarMensagem(char* topico, uint8_t* conteudo, unsigned int tamanho) {
 }
 
 // ---------------------------------------------------------------- rede
+const char* motivoMqtt(int estado) {
+  switch (estado) {
+    case MQTT_CONNECTION_TIMEOUT: return "o servidor não respondeu a tempo";
+    case MQTT_CONNECTION_LOST: return "a conexão caiu";
+    case MQTT_CONNECT_FAILED: return "não abriu a conexão TLS (rede ou certificado; veja a linha TLS abaixo)";
+    case MQTT_CONNECT_BAD_PROTOCOL: return "versão do MQTT recusada";
+    case MQTT_CONNECT_BAD_CLIENT_ID: return "id de cliente recusado";
+    case MQTT_CONNECT_UNAVAILABLE: return "servidor indisponível";
+    case MQTT_CONNECT_BAD_CREDENTIALS: return "usuário ou senha errados";
+    case MQTT_CONNECT_UNAUTHORIZED: return "não autorizado: senha errada, ou o braco-demo ainda não foi carregado no MQTT";
+    default: return "desconhecido";
+  }
+}
+
 void lerSenha() {
   // A senha vem do Serial Monitor (Enter, ou meio segundo sem digitar nada).
   while (Serial.available()) {
@@ -216,7 +230,16 @@ void manterConexao() {
   const String clienteId = String("braco-") + SONAR_PARADA;
   if (!mqtt.connect(clienteId.c_str(), MQTT_USUARIO, senha.c_str(), topicoStatus.c_str(), 1, true,
                     "{\"online\":false}")) {
-    Serial.printf("[rede] MQTT recusou (estado %d). Senha errada? Pare e dê play de novo.\n", mqtt.state());
+    const int estado = mqtt.state();
+    Serial.printf("[rede] MQTT não conectou (estado %d): %s\n", estado, motivoMqtt(estado));
+    if (estado == MQTT_CONNECT_FAILED) {
+      char erro[120] = "";
+      const int codigo = clienteTls.lastError(erro, sizeof(erro));
+      Serial.printf("[rede] TLS: %d %s | relógio: %s\n", codigo, erro,
+                    time(nullptr) > 1700000000 ? "certo (NTP)" : "ainda sem NTP");
+    } else if (estado == MQTT_CONNECT_BAD_CREDENTIALS || estado == MQTT_CONNECT_UNAUTHORIZED) {
+      Serial.println("[rede] Para digitar a senha de novo, pare a simulação e dê play.");
+    }
     return;
   }
   Serial.println("[rede] MQTT conectado: esperando a posição do letreiro");
