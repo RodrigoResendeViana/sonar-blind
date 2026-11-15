@@ -285,7 +285,8 @@ jobs:
       - name: Credenciais temporárias pelo OIDC
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          # o ARN fica em GitHub Secrets (mascarado nos logs); a variável antiga ainda vale como reserva
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN || vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Publicar na EC2 pelo SSM
         env:
