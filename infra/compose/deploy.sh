@@ -149,6 +149,12 @@ while IFS=$'\t' read -r nome senha; do
   printf '%s:%s\n' "$usuario" "$senha" >>"$TMP/passwd"
 done <"$TMP/usuarios.tsv"
 [ -n "$MQTT_API_SENHA" ] || falhar "falta o parâmetro /sonar/mqtt/usuarios/sonar-api"
+# Usuários ou ACL mudaram desde a última vez que o Mosquitto carregou? O mosquitto_passwd gera um
+# hash novo a cada vez, então compara um resumo das senhas em texto e da ACL (só o resumo fica no
+# disco, e só depois de o Mosquitto recarregar).
+RESUMO_USUARIOS="$(cat "$TMP/passwd" "$TMP/acl" | sha256sum | cut -d' ' -f1)"
+USUARIOS_MQTT_MUDARAM=0
+[ "$RESUMO_USUARIOS" = "$(cat "$SEGREDOS/mosquitto/usuarios.sha256" 2>/dev/null)" ] || USUARIOS_MQTT_MUDARAM=1
 docker run --rm --user 0 --network none -v "$TMP:/w" "$IMAGEM_MOSQUITTO" mosquitto_passwd -U /w/passwd
 install -m 600 -o "$UID_MOSQUITTO" -g "$UID_MOSQUITTO" "$TMP/passwd" "$SEGREDOS/mosquitto/passwd"
 install -m 600 -o "$UID_MOSQUITTO" -g "$UID_MOSQUITTO" "$TMP/acl" "$SEGREDOS/mosquitto/acl"
@@ -235,7 +241,12 @@ if [ "$NOVA_CONF" != "$CONF_MQTT" ]; then
   docker compose up -d mqtt
 elif [ "$CERT_MUDOU" = 1 ]; then
   docker compose restart mqtt
+elif [ "$USUARIOS_MQTT_MUDARAM" = 1 ]; then
+  # o Mosquitto só relê a senha e a ACL quando recebe SIGHUP (ou reinicia)
+  log "recarregando usuários e ACL do Mosquitto"
+  docker compose kill -s SIGHUP mqtt
 fi
+printf '%s\n' "$RESUMO_USUARIOS" >"$SEGREDOS/mosquitto/usuarios.sha256"
 
 if tem_perfil rpa && [ -d "$COMPOSE_DIR/../../rpa/n8n" ]; then
   # o repositório é a fonte da verdade dos fluxos: mudou no editor do n8n, exporte para rpa/n8n
