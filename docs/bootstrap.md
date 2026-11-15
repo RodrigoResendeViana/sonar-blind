@@ -88,9 +88,10 @@ Salve e confira (pode levar de minutos a algumas horas): `nslookup sonar.rodrigo
 
 ## 6. Pipeline
 
-1. No GitHub: Settings > Secrets and variables > Actions > aba **Variables** > New repository
-   variable: `AWS_DEPLOY_ROLE_ARN` = o `papel_deploy_arn` do Terraform. É só isso: o pipeline usa
-   OIDC, então **não existe chave da AWS** para cadastrar.
+1. No GitHub: Settings > Secrets and variables > Actions > aba **Secrets** > New repository
+   secret: `AWS_DEPLOY_ROLE_ARN` = o `papel_deploy_arn` do Terraform. É só isso: o pipeline usa
+   OIDC, então **não existe chave da AWS** para cadastrar. O ARN não é uma credencial (sozinho não
+   dá acesso a nada), mas como segredo ele aparece mascarado nos logs, junto com o número da conta.
 2. Faça o merge do pull request (ou um push na `main`). O pipeline testa, publica as imagens no
    GHCR e faz o deploy pelo SSM.
 3. Na primeira vez, as imagens podem nascer privadas. Se o deploy falhar no `docker compose pull`:

@@ -33,8 +33,8 @@ antes de qualquer deploy. Arquitetura: `docs/arquitetura.md`.
 | Imagens | Trivy (CVE altas/críticas com correção) + SBOM | imagem vulnerável chegando ao GHCR |
 | Deploy | OIDC (sem chave da AWS guardada) + `ssm send-command` (sem SSH) | — |
 
-[PRINT: pipeline verde com todos os jobs] [PRINT: a execução barrada pelo Trivy e a correção —
-roteiro em `docs/execucao-barrada.md`]
+[PRINT: pipeline verde com todos os jobs] [PRINT: a execução barrada pelo Trivy (run 42534024438),
+o commit da correção (3fd80c6) e a execução corrigida (run 42535631976) — `docs/execucao-barrada.md`]
 
 ## 4. Segurança em execução
 
@@ -64,4 +64,7 @@ vencer, entre outros (`infra/monitoramento/prometheus/alertas.yml`).
 | Deploy negado pelo STS (`AssumeRoleWithWebIdentity`) | o GitHub mandava o `sub` com IDs imutáveis do dono e do repositório | trust policy aceita os dois formatos, sempre só a `main` |
 | Alertmanager não subia | segredo montado dentro de uma pasta já montada como só leitura | segredo em `/run/segredos` |
 | Certificado não saiu de primeira | o registro DNS do subdomínio ainda não existia (NXDOMAIN) | registro A do `sonar` e nova tentativa automática do Caddy |
-| [PREENCHER] | | |
+| Trivy barrou as imagens | CVEs altas no `pip` da imagem e no `golang.org/x/net` do Caddy | `pip` fora da imagem final, `apt-get upgrade` e exceção justificada no `.trivyignore` |
+| Grafana não carregava | a CSP restritiva do app valia também para `/grafana`; o service worker do app capturava a rota | CSP própria do Grafana no Caddy e `/grafana` fora do service worker |
+| Usuário novo do MQTT recusado | o deploy regravava senhas e ACL, mas o Mosquitto só relê com SIGHUP | o deploy compara um resumo e manda SIGHUP quando muda |
+| n8n não subiria depois do `terraform apply` | a chave nova do Parameter Store trocaria a chave que cifra os dados do n8n | a chave fica fixa no disco da EC2 desde o primeiro uso |
