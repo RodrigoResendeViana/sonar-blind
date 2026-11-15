@@ -2,7 +2,7 @@
 # Imagem da API: multi-stage, usuário não root, nenhum segredo dentro.
 # Os segredos chegam por variáveis de ambiente, geradas no deploy a partir do Parameter Store.
 
-FROM python:3.13-slim AS dependencias
+FROM python:3.15-slim AS dependencias
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 COPY requirements.txt .
@@ -10,7 +10,7 @@ COPY requirements.txt .
 RUN python -m venv /venv && /venv/bin/pip install --require-virtualenv -r requirements.txt \
  && /venv/bin/python -m pip uninstall -y pip
 
-FROM python:3.13-slim
+FROM python:3.15-slim
 # correções de segurança do Debian que ainda não entraram na imagem base; sem pip na imagem final
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
  && python -m pip uninstall -y pip
