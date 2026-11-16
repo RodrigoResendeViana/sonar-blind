@@ -76,7 +76,6 @@ posição do letreiro (malha aberta). No braço montado, com a webcam na cabeça
    (`.\iniciar.ps1 -Modo teclado -Braco`), digite `DEMO-10@0.1` e `DEMO-10@0.9`: o servo pan vira.
 4. Ponto e Bordo: `pio run -e ponto_wokwi` / `bordo_wokwi`, com os diagramas das pastas `wokwi/ponto`
    e `wokwi/bordo`.
-5. **Grave a tela**: é a primeira evidência da matéria.
 
 ## 3. Montar
 
@@ -162,7 +161,7 @@ Segure um letreiro impresso na frente da câmera e mova devagar para os lados. A
 Na maquete, ajuste também o ultrassom: `LIMIAR_PADRAO_CM 15` em `config.h` (o padrão, 150 cm, é
 para ônibus de verdade).
 
-## 6. Testar (cada teste vira uma cena do vídeo)
+## 6. Testar
 
 1. **Wokwi**: braço no modo manual e seguindo `DEMO-10@x` pelo teclado.
 2. **Bancada**: cada placa conecta no Wi-Fi e no MQTT (monitor serial).
@@ -173,11 +172,3 @@ para ônibus de verdade).
    câmera lê a linha → "é o seu" (LED aceso + bipe longo).
 6. **Falhas**: tire o Wi-Fi do Ponto e devolva (os eventos chegam depois); desligue a câmera (o app
    avisa "sem confirmação visual").
-
-## 7. Evidências para o relatório
-
-- Esquema elétrico (print do Wokwi de cada placa) e a tabela de ligações.
-- Lista de materiais com o custo que vocês pagaram.
-- Fotos da montagem (cabeça pan-tilt, ponto, ônibus) e da maquete inteira.
-- Vídeo do Wokwi e vídeo do braço seguindo o letreiro (com a janela da câmera aparecendo).
-- A máquina de estados do braço e do Ponto (`firmware/README.md`) e a tabela de calibração final.

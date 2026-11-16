@@ -1,4 +1,4 @@
-# Agente de IA generativa (equipe de GenAI)
+# Agente de IA generativa
 
 > A viagem em si é conduzida pela conversa por voz da API (`api/sonar_api/conversa.py`, regras
 > rápidas e previsíveis). O agente entra nas perguntas que as regras não entendem ("o ônibus tem
@@ -62,7 +62,7 @@ Já vem ligado: o deploy sobe o Ollama e o agente (perfil `ia`), baixa o modelo 
 Para trocar o modelo (ex.: um menor, mais rápido): `aws ssm put-parameter --name /sonar/ia/modelo
 --type String --value qwen2.5:1.5b --overwrite` e rode o deploy de novo.
 
-## Avaliação (para a entrega de GenAI)
+## Avaliação
 
 ```bash
 cd ia
@@ -74,8 +74,8 @@ python avaliar.py --com-olhovivo        # + 2 perguntas que precisam do token do
 As perguntas e o que se espera de cada uma estão em `avaliacao/perguntas.json`: previsão por linha,
 destino ("qual vai para o centro?"), número falado por extenso, linha de outro ponto, linha
 inexistente, fora do assunto, pergunta vaga e injeção de prompt. O script grava
-`avaliacao/resultado.md` (tabela pronta para o relatório: resposta, quem respondeu, tempo e acerto)
-e mostra o resumo: acertos, latência mediana e p95, e quantas o LLM respondeu.
+`avaliacao/resultado.md` (uma tabela com a resposta, quem respondeu, o tempo e o acerto de cada
+pergunta) e mostra o resumo: acertos, latência mediana e p95, e quantas o LLM respondeu.
 
-Ideias para o relatório: comparar `qwen2.5:3b` com `qwen2.5:1.5b` (acerto × tempo), e mostrar no
-Grafana `sonar_ia_respostas_total` por `modo` (`servico` = LLM, `servico_regras` = caiu para as regras).
+No Grafana, `sonar_ia_respostas_total` por `modo` mostra quantas respostas vieram do LLM (`servico`)
+e quantas caíram para as regras (`servico_regras`).

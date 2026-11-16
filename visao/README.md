@@ -1,4 +1,4 @@
-# Visão computacional (equipe de Visão)
+# Visão computacional
 
 Acha o **letreiro do ônibus** no quadro da câmera e lê a linha. O serviço da câmera
 ([`edge/`](../edge/README.md)) roda no notebook do ponto e publica só o texto lido (e a posição do
@@ -10,7 +10,7 @@ letreiro, para o braço do Maker Lab). Nenhuma imagem sai do notebook.
 |---|---|---|---|
 | 1. Só OCR | EasyOCR acha e lê todos os textos do quadro | não | já funciona hoje, com os letreiros impressos da maquete |
 | 2. YOLO sintético | modelo treinado só com letreiros gerados por `sintetico.py` | sim, sem rotular nada | rápido de treinar; bom para a maquete |
-| 3. YOLO sintético + fotos reais | o mesmo, completado com fotos reais rotuladas no Roboflow | sim | a entrega da matéria (métricas em ônibus de verdade) |
+| 3. YOLO sintético + fotos reais | o mesmo, completado com fotos reais rotuladas no Roboflow | sim | ônibus de verdade, na rua |
 
 O serviço da câmera escolhe sozinho: se `edge/modelos/letreiro.pt` existir, usa o YOLO (nível 2/3);
 senão, só o OCR (nível 1). Em qualquer nível, o texto lido passa pelo vocabulário restrito da parada
@@ -44,7 +44,7 @@ com perspectiva, desfoque, ruído, luz e textos que não são letreiro (loja, pl
 caixa exata de cada letreiro. Cerca de 10% das imagens não têm letreiro, para o modelo não ver
 letreiro em tudo.
 
-## Fotos reais (para a entrega)
+## Fotos reais
 
 1. Juntar 150 a 300 fotos de ônibus com o letreiro visível (rua, vídeos, sites de transporte), de
    dia e de noite, de frente e de lado.
@@ -85,7 +85,7 @@ python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 --modo webcam --ja
 A janela mostra os textos lidos (laranja) e o letreiro que está sendo seguido (verde). Mexa o
 letreiro impresso na frente da câmera.
 
-## Medir (para o relatório)
+## Como medimos
 
 - **Detector**: mAP50, precisão e revocação do teste (saída do `treinar.py`), comparando sintético
   só vs. sintético + reais.

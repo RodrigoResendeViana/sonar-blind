@@ -106,7 +106,7 @@ services:
     read_only: true
     mem_limit: 64m
 
-  # LLM local da equipe de GenAI. Liga com COMPOSE_PROFILES=ia.
+  # LLM local do agente de IA. Liga com COMPOSE_PROFILES=ia.
   ollama:
     <<: *padrao
     image: ollama/ollama:latest

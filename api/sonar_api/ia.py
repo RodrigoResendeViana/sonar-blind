@@ -1,6 +1,6 @@
 """Contrato da pergunta por voz (App -> API -> IA).
 
-Se SONAR_IA_URL estiver definido, a pergunta vai para o agente da equipe de GenAI
+Se SONAR_IA_URL estiver definido, a pergunta vai para o agente de IA generativa
 (POST {SONAR_IA_URL}/perguntar, mesmo contrato). Sem ele, um responder por regras
 mantém o MVP funcionando: só fala o que está no cadastro da parada e na previsão,
 e diz "não consta" no resto.

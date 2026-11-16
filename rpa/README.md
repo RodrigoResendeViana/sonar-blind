@@ -1,4 +1,4 @@
-# Robô de RPA (equipe de RPA)
+# Robô de RPA
 
 Quando o ônibus passa direto e o passageiro consente, a API cria uma **ocorrência** com as
 evidências do ponto (leitura da câmera, tempo parado, aviso ao motorista e o "ciente" dele).
@@ -23,8 +23,9 @@ Contrato: [`docs/contratos.md`](../docs/contratos.md#ocorrências-api--robô-de-
 O deploy sobe o n8n (perfil `rpa`, ligado por padrão), **importa e publica** o fluxo deste repositório
 e reinicia o n8n. Não é preciso abrir o editor para o RPA funcionar.
 
-O repositório é a fonte da verdade: cada deploy reimporta `rpa/n8n/*.json`. Mudou o fluxo no editor?
-Exporte (menu ⋯ → *Download*), salve em `rpa/n8n/` e abra um PR, senão o próximo deploy desfaz a mudança.
+O repositório é a fonte da verdade: cada deploy reimporta `rpa/n8n/*.json`, então uma mudança
+feita só no editor é desfeita no deploy seguinte. Para mudar o fluxo, exporte do editor (menu ⋯ →
+*Download*) e salve em `rpa/n8n/`.
 
 ## Segurança
 
@@ -47,8 +48,7 @@ aws ssm start-session --target <id-da-ec2> --document-name AWS-StartPortForwardi
 ```
 
 O comando pronto sai de `terraform output abrir_o_n8n`. Abra http://localhost:5678 e crie o usuário
-dono na primeira vez. Dá para ver cada execução (entrada e saída de cada nó): ótimo para os prints
-do relatório.
+dono na primeira vez. Dá para ver cada execução (entrada e saída de cada nó).
 
 ## Testar ponta a ponta
 
@@ -56,15 +56,7 @@ do relatório.
 2. Em poucos segundos o app fala "Sua reclamação foi registrada com o protocolo SIM-...".
 3. No Grafana, `sonar_rpa_avisos_total` conta os avisos da API ao robô.
 
-## O que a equipe de RPA evolui
-
-- Trocar o registro simulado por um canal real: nó **Send Email** para a ouvidoria da SPTrans
-  ou **HTTP Request** para o formulário do SP156, guardando o protocolo devolvido.
-- Nó do **Telegram** avisando a equipe de cada reclamação enviada.
-- Nó do **Google Sheets** com o histórico (base para Big Data depois).
-- Tratamento de erro: um fluxo de erro do n8n que marca a ocorrência como `erro`.
-
 ## Cliente em Python (referência)
 
 `sonar_rpa/` faz o mesmo ciclo em Python e tem testes do contrato (`pytest`). Serve para testar a
-API sem o n8n e como referência para quem preferir outra ferramenta de RPA.
+API sem o n8n.

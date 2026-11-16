@@ -1,7 +1,7 @@
 # Serviço da câmera do Sonar Ponto
 
 Roda no notebook do ponto. Lê a webcam **só enquanto há uma espera ativa**, acha o letreiro com
-o YOLO da equipe de Visão, lê o texto com OCR, casa com o vocabulário restrito da parada, confirma
+o YOLO de [`visao/`](../visao/README.md), lê o texto com OCR, casa com o vocabulário restrito da parada, confirma
 depois de 3 quadros seguidos iguais e publica só o texto em `sonar/parada/{id}/visao`:
 
 ```json
@@ -28,7 +28,7 @@ mesmo sem espera aberta (para a demonstração do braço).
 |---|---|---|
 | `auto` (padrão) | YOLO se `modelos/letreiro.pt` existir; senão, só OCR | não |
 | `ocr` | o EasyOCR acha e lê os textos do quadro inteiro | não: já funciona com letreiro impresso |
-| `yolo` | o modelo da equipe de Visão acha o letreiro; o OCR lê só o recorte | sim (`visao/treinar.py`) |
+| `yolo` | o modelo treinado em `visao/` acha o letreiro; o OCR lê só o recorte | sim (`visao/treinar.py`) |
 
 A câmera roda em segundo plano: um fio captura os quadros e **rastreia** o letreiro (correlação,
 milissegundos por quadro); outro roda o OCR/YOLO no quadro mais recente. Assim a posição para o
@@ -103,11 +103,11 @@ python -m sonar_camera --parada demo --linhas DEMO-10,DEMO-20 --modo webcam --ja
 
 Para testar contra o compose local (sem TLS): `SONAR_MQTT_HOST=localhost SONAR_MQTT_PORTA=1883 SONAR_MQTT_TLS=0`.
 
-## Onde a equipe de Visão entra
+## O modelo
 
-Treina o modelo em [`visao/`](../visao/README.md) (com dataset sintético, sem rotular nada, e/ou
-fotos reais) e o `treinar.py` copia o resultado para `edge/modelos/letreiro.pt`. Para trocar a
-abordagem, basta outro localizador em `sonar_camera/detectores.py`: uma função que recebe o quadro e
-devolve a lista de `Leitura(texto, confianca, x, y, caixa)`.
+O modelo é treinado em [`visao/`](../visao/README.md) (com dataset sintético, sem rotular nada, e/ou
+fotos reais), e o `treinar.py` copia o resultado para `edge/modelos/letreiro.pt`. Outra abordagem
+cabe em `sonar_camera/detectores.py`: um localizador é uma função que recebe o quadro e devolve a
+lista de `Leitura(texto, confianca, x, y, caixa)`.
 
 Testes: `pip install -r requirements-dev.txt && pytest`.

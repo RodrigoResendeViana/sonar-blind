@@ -1,7 +1,7 @@
 # Monitoramento (na EC2)
 
 Prometheus, Alertmanager, blackbox exporter e Grafana sobem junto com o Sonar, no mesmo
-`docker compose` da EC2 (perfil `producao`). Nada roda no servidor local.
+`docker compose` da EC2 (perfil `producao`).
 
 | O quê | Onde |
 |---|---|
@@ -46,6 +46,7 @@ Sem esses parâmetros, o Alertmanager sobe e os alertas aparecem só no Grafana/
 | MemoriaDaEC2, DiscoDaEC2 | memória abaixo de 10%; disco abaixo de 15% |
 | CertificadoVencendo | o HTTPS vence em menos de 14 dias |
 
-**Disparar um alerta para o print:** desligue o Sonar Ponto e espere 5 min ("Sonar Ponto offline").
+**Para ver um alerta disparar:** desligue o Sonar Ponto e espere 5 min ("Sonar Ponto offline"), ou
+pare a API por alguns minutos (`sudo docker stop sonar-api-1`) e espere o "SonarApiForaDoAr".
 Observação: se a própria EC2 cair, o monitoramento cai junto; o teste de fumaça do pipeline e o
 AWS Budgets continuam de fora.

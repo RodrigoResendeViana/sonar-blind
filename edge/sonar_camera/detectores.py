@@ -2,7 +2,7 @@
 
 - Teclado: para testar sem câmera (digite a linha no terminal).
 - Câmera: acha o letreiro e lê o texto, de um destes jeitos:
-  - "yolo": modelo da equipe de Visão (modelos/letreiro.pt) acha o letreiro e o OCR lê o recorte;
+  - "yolo": modelo treinado em visao/ (modelos/letreiro.pt) acha o letreiro e o OCR lê o recorte;
   - "ocr": sem modelo treinado, o próprio EasyOCR acha e lê os textos do quadro inteiro.
     Funciona bem com letreiro impresso na maquete; é o padrão enquanto o modelo não existe.
   Entre uma detecção e outra, um rastreador segue o letreiro para o braço do Maker Lab.
@@ -120,7 +120,7 @@ class LocalizadorOcr:
 
 
 class LocalizadorYolo:
-    """Modelo da equipe de Visão acha o letreiro; o OCR lê só o recorte (mais rápido e mais preciso)."""
+    """O modelo treinado em visao/ acha o letreiro; o OCR lê só o recorte (mais rápido e mais preciso)."""
 
     nome = "yolo"
 
