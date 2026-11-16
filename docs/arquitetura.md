@@ -9,9 +9,9 @@ caminho de um commit até o ar.
 flowchart TB
   subgraph rua["Na rua e no ônibus"]
     direction LR
-    PAS["<b>Passageiro cego</b><br/>app de voz no celular"]
-    PONTO["<b>Ponto de ônibus</b><br/>Sonar Ponto, câmera<br/>com visão e braço"]
-    BORDO["<b>Ônibus</b><br/>Sonar Bordo,<br/>o bipper do motorista"]
+    PAS["<b>Passageiro cego</b><br/>app de voz<br/>no celular"]
+    PONTO["<b>Ponto de ônibus</b><br/>Sonar Ponto,<br/>câmera e braço"]
+    BORDO["<b>Ônibus</b><br/>Sonar Bordo<br/>do motorista"]
     PAS ~~~ PONTO ~~~ BORDO
   end
 
@@ -21,13 +21,13 @@ flowchart TB
   end
 
   subgraph aws["AWS us-east-1 · tudo criado por Terraform"]
-    direction LR
+    direction TB
     SSM["<b>SSM e Parameter Store</b><br/>deploy sem SSH<br/>e segredos"]
     subgraph ec2["EC2 · docker compose"]
       direction LR
-      ENT["<b>Entrada</b><br/>Caddy: HTTPS 443<br/>Mosquitto: MQTT TLS 8883"]
+      ENT["<b>Entrada</b><br/>Caddy: HTTPS<br/>Mosquitto: MQTT TLS"]
       NUC["<b>API + Postgres</b><br/>conversa, planejador<br/>e esperas"]
-      INT["<b>IA generativa e RPA</b><br/>Ollama e n8n"]
+      INT["<b>IA e RPA</b><br/>Ollama e n8n"]
       MON["<b>Monitoramento</b><br/>Prometheus, Grafana<br/>e Alertmanager"]
       ENT --> NUC --> INT
       MON -.->|métricas| NUC
@@ -77,25 +77,25 @@ flowchart TB
   subgraph ec2["EC2 · docker compose · portas abertas: só 80, 443 e 8883"]
     direction LR
     subgraph borda["Borda"]
-      direction LR
-      CADDY["<b>web</b> · Caddy<br/>HTTPS, app, /api e /grafana"] ~~~ MQ["<b>mqtt</b> · Mosquitto<br/>senha e ACL<br/>por dispositivo"]
+      direction TB
+      CADDY["<b>web</b> · Caddy<br/>app, /api e /grafana"] ~~~ MQ["<b>mqtt</b> · Mosquitto<br/>senha e ACL<br/>por dispositivo"]
     end
     subgraph app["Aplicação"]
-      direction LR
+      direction TB
       API["<b>api</b> · FastAPI<br/>conversa e esperas"] --> DB[("<b>db</b><br/>Postgres")]
     end
     subgraph intel["IA e RPA"]
-      direction LR
-      IA["<b>ia</b> · agente de IA"] --> OL["<b>ollama</b><br/>LLM local"]
-      N8["<b>n8n</b> · robô de RPA<br/>editor só por túnel do SSM"]
+      direction TB
+      IA["<b>ia</b><br/>agente de IA"] --> OL["<b>ollama</b><br/>LLM local"]
+      N8["<b>n8n</b> · RPA<br/>editor só por<br/>túnel do SSM"]
     end
     subgraph mon["Monitoramento"]
-      direction LR
-      GRA["<b>grafana</b><br/>painel"] --> PROM["<b>prometheus</b><br/>coleta e regras"] --> AM["<b>alertmanager</b>"]
-      EXP["<b>blackbox</b>: site visto de fora<br/><b>node-exporter</b>: CPU, RAM, disco"]
+      direction TB
+      GRA["<b>grafana</b> · painel"] --> PROM["<b>prometheus</b><br/>coleta e regras"] --> AM["<b>alertmanager</b>"]
+      EXP["<b>blackbox</b> e<br/><b>node-exporter</b>"]
     end
     borda -->|"/api e MQTT"| app
-    app -->|"perguntas e webhook"| intel
+    app -->|"perguntas<br/>e webhook"| intel
     mon -.->|"coleta /metrics"| app
   end
 

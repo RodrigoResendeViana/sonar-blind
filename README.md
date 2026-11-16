@@ -56,9 +56,9 @@ passageiro do que fazer. Com o GTFS da SPTrans carregado, o mesmo vale para as l
 flowchart TB
   subgraph rua["Na rua e no ônibus"]
     direction LR
-    PAS["<b>Passageiro cego</b><br/>app de voz no celular"]
-    PONTO["<b>Ponto de ônibus</b><br/>Sonar Ponto, câmera<br/>com visão e braço"]
-    BORDO["<b>Ônibus</b><br/>Sonar Bordo,<br/>o bipper do motorista"]
+    PAS["<b>Passageiro cego</b><br/>app de voz<br/>no celular"]
+    PONTO["<b>Ponto de ônibus</b><br/>Sonar Ponto,<br/>câmera e braço"]
+    BORDO["<b>Ônibus</b><br/>Sonar Bordo<br/>do motorista"]
     PAS ~~~ PONTO ~~~ BORDO
   end
 
@@ -68,13 +68,13 @@ flowchart TB
   end
 
   subgraph aws["AWS us-east-1 · tudo criado por Terraform"]
-    direction LR
+    direction TB
     SSM["<b>SSM e Parameter Store</b><br/>deploy sem SSH<br/>e segredos"]
     subgraph ec2["EC2 · docker compose"]
       direction LR
-      ENT["<b>Entrada</b><br/>Caddy: HTTPS 443<br/>Mosquitto: MQTT TLS 8883"]
+      ENT["<b>Entrada</b><br/>Caddy: HTTPS<br/>Mosquitto: MQTT TLS"]
       NUC["<b>API + Postgres</b><br/>conversa, planejador<br/>e esperas"]
-      INT["<b>IA generativa e RPA</b><br/>Ollama e n8n"]
+      INT["<b>IA e RPA</b><br/>Ollama e n8n"]
       MON["<b>Monitoramento</b><br/>Prometheus, Grafana<br/>e Alertmanager"]
       ENT --> NUC --> INT
       MON -.->|métricas| NUC
