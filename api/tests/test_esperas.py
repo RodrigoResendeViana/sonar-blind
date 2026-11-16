@@ -224,3 +224,61 @@ def test_painel_conta_embarques_e_ocorrencias(cliente):
     assert painel["nao_parou"] == 1
     assert painel["nao_parou_por_100_esperas"] == 50.0
     assert painel["ocorrencias_por_status"] == {"anonima": 1}
+
+
+def _com_ciente(sonar, espera_id: str, segundos_atras: float) -> None:
+    """Simula o aviso ao motorista do DEMO-10 e o "ciente" dele há alguns segundos."""
+    with sonar._transacao() as (sessao, _saida):
+        espera = sessao.get(Espera, espera_id)
+        espera.prefixo_avisado, espera.linha_avisada = "90001", "DEMO-10"
+        espera.aviso_enviado_em = agora() - timedelta(seconds=segundos_atras + 60)
+    assert sonar.registrar_ciente("90001", {"espera_id": espera_id})
+    with sonar._transacao() as (sessao, _saida):
+        sessao.get(Espera, espera_id).ciente_em = agora() - timedelta(seconds=segundos_atras)
+
+
+def _falas(cliente, sonar, espera_id: str, tipo: str) -> list[str]:
+    sonar.cancelar_espera(espera_id)
+    return [e["fala"] for e in ler_sse(cliente, f"/esperas/{espera_id}/eventos") if e["tipo"] == tipo]
+
+
+def test_ciente_diz_a_linha_e_o_proximo_passo(cliente, sonar):
+    espera_id = criar_espera(cliente)["id"]
+    _com_ciente(sonar, espera_id, 0)
+    [fala] = _falas(cliente, sonar, espera_id, "motorista_ciente")
+    assert "O motorista do DEMO-10 viu o aviso e confirmou" in fala and "eu aviso quando ele chegar" in fala
+
+
+def test_sem_onibus_depois_do_ciente_lembra_duas_vezes(cliente, sonar):
+    espera_id = criar_espera(cliente)["id"]
+    _com_ciente(sonar, espera_id, 30)
+    sonar.verificar_temporizadores()  # cedo demais: nada
+    with sonar._transacao() as (sessao, _saida):
+        sessao.get(Espera, espera_id).ciente_em = agora() - timedelta(seconds=130)
+    sonar.verificar_temporizadores()
+    sonar.verificar_temporizadores()  # o segundo só no triplo do tempo
+    with sonar._transacao() as (sessao, _saida):
+        sessao.get(Espera, espera_id).ciente_em = agora() - timedelta(seconds=400)
+    sonar.verificar_temporizadores()
+    sonar.verificar_temporizadores()  # e para por aí
+    falas = _falas(cliente, sonar, espera_id, "lembrete_espera")
+    assert len(falas) == 2
+    assert "deve estar perto. Eu aviso quando ele chegar" in falas[0] and "diga: embarquei" in falas[0]
+    assert falas[1].startswith("Ainda não vi o DEMO-10 chegar") and "quero reclamar" in falas[1]
+
+
+def test_lembrete_fala_da_camera_quando_ela_esta_no_ponto(cliente, sonar):
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True, "sem_ponto": True})
+    espera_id = criar_espera(cliente)["id"]
+    _com_ciente(sonar, espera_id, 130)
+    sonar.verificar_temporizadores()
+    [fala] = _falas(cliente, sonar, espera_id, "lembrete_espera")
+    assert "Eu aviso quando a câmera do ponto ler o letreiro" in fala
+
+
+def test_onibus_detectado_depois_do_ciente_nao_gera_lembrete(cliente, sonar):
+    espera_id = criar_espera(cliente)["id"]
+    _com_ciente(sonar, espera_id, 400)
+    sonar.processar_deteccao("demo", {"linha_lida": "DEMO-10", "confianca": 0.9, "tempo_parado_s": 10})
+    sonar.verificar_temporizadores()
+    assert _falas(cliente, sonar, espera_id, "lembrete_espera") == []
