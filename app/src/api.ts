@@ -101,22 +101,6 @@ export interface PedidoConversa {
   cenario_demo?: CenarioDemo
 }
 
-export interface Indicadores {
-  esperas: number
-  avisos_enviados: number
-  avisos_ciente: number
-  taxa_ciente: number | null
-  embarques: number
-  embarques_validados_camera: number
-  nao_parou: number
-  nao_parou_por_100_esperas: number | null
-  tempo_medio_espera_min: number | null
-  ocorrencias_por_status: Record<string, number>
-  por_linha: { linha: string; esperas?: number; avisos?: number; cientes?: number; embarques?: number; nao_parou?: number }[]
-  dispositivos: { tipo: string; id: string; online: boolean; ultimo_sinal_em: string }[]
-  gerado_em: string
-}
-
 export class ErroApi extends Error {
   constructor(
     public readonly status: number,
@@ -181,7 +165,6 @@ export const api = {
   naoParou: (id: string, consentimento: boolean) => post<Espera>(`/esperas/${id}/nao-parou`, { consentimento }),
   cancelar: (id: string) => post<Espera>(`/esperas/${id}/cancelar`),
   localizar: (id: string) => post<Espera>(`/esperas/${id}/localizar`),
-  indicadores: (incluirDemo: boolean) => chamar<Indicadores>(`/painel/indicadores?incluir_demo=${incluirDemo}`),
   deteccao: (
     paradaId: string,
     corpo: { linha_lida: string | null; confianca?: number; tempo_parado_s?: number; parou?: boolean; camera_ok?: boolean },

@@ -23,7 +23,7 @@ em `https://sonar.rodrigoviana.app.br/api/docs`.
 | `POST /esperas/{id}/embarque` | app ("Embarquei") | `{origem, horario}`; a API cruza com a passagem que a câmera registrou |
 | `POST /esperas/{id}/nao-parou` | app | `{consentimento}`; vira ocorrência para o robô |
 | `POST /esperas/{id}/cancelar` | app | encerra a espera |
-| `GET /painel/indicadores` | painel da cidade | números agregados, sem dado pessoal |
+| `GET /painel/indicadores` | Big Data (a tela do painel saiu do MVP) | números agregados, sem dado pessoal |
 | `GET /ocorrencias?status=pendente`, `PATCH /ocorrencias/{id}` | robô de RPA | `Authorization: Bearer <token>` (Parameter Store `/sonar/api/token-servico`) |
 | `POST /demo/esperas` | app, avaliador | `{cenario: embarque \| nao_parou \| maquete}`: a jornada em ~2 min |
 | `/simulador/...` | telas Motorista e Ponto | gêmeos digitais do Sonar Bordo e do Sonar Ponto |

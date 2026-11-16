@@ -39,13 +39,16 @@ Projeto da Global Solution 2026.2 (CitizenTech), 4º ano de Engenharia de Softwa
 
 ## Experimente
 
-Abra o app, toque no botão e diga **"quero ir para o hospital"** (ou escreva, em "Mais opções").
+Abra o app, escolha **Sou passageiro**, toque no botão e diga **"quero ir para o hospital"** (ou
+escreva, em "Mais opções").
 Na demonstração, a viagem sai da maquete por uma rede de linhas fictícias: o Sonar planeja DEMO-20 +
 DEMO-30, você diz "sim", "cheguei", ouve o ônibus errado e o certo, diz "embarquei" e ele avisa a
 hora de descer e a baldeação. Para ver um ônibus passando direto, escolha "O ônibus passa direto"
-em "Mais opções" e diga "quero reclamar". Abra ao mesmo tempo, em outra aba, a tela **Motorista
-(simulado)** para apertar o "Ciente", ou **Ponto (simulado)** para fazer o papel da câmera e do
-botão do poste. Com o GTFS da SPTrans carregado, o mesmo vale para as linhas reais de São Paulo.
+em "Mais opções" e diga "quero reclamar". Abra ao mesmo tempo, em outra aba, o perfil **Sou
+motorista** para apertar o "Ciente", ou **Ponto de ônibus** para fazer o papel da câmera e do
+botão do poste. Depois do "Ciente", quem diz qual ônibus chegou é a câmera do ponto (o celular, com
+`edge/iniciar.ps1 -SemPonto`) ou, sem câmera, a demonstração; se nada chegar, o app lembra o
+passageiro do que fazer. Com o GTFS da SPTrans carregado, o mesmo vale para as linhas reais de São Paulo.
 
 ## Repositório
 

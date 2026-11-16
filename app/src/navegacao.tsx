@@ -1,11 +1,10 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 
 export const ROTAS = [
-  { caminho: '/', nome: 'Passageiro' },
-  { caminho: '/motorista', nome: 'Motorista (simulado)' },
-  { caminho: '/ponto', nome: 'Ponto (simulado)' },
-  { caminho: '/painel', nome: 'Painel da cidade' },
-  { caminho: '/privacidade', nome: 'Privacidade' },
+  { caminho: '/', nome: 'Início' },
+  { caminho: '/passageiro', nome: 'Passageiro' },
+  { caminho: '/motorista', nome: 'Motorista' },
+  { caminho: '/ponto', nome: 'Ponto de ônibus' },
 ] as const
 
 export type Caminho = (typeof ROTAS)[number]['caminho']
@@ -30,14 +29,24 @@ export function useCaminho(): Caminho {
   return caminho
 }
 
-export function Link({ para, children, atual }: { para: string; children: ReactNode; atual?: boolean }) {
+export function Link({
+  para,
+  children,
+  atual,
+  className,
+}: {
+  para: string
+  children: ReactNode
+  atual?: boolean
+  className?: string
+}) {
   function aoClicar(evento: MouseEvent<HTMLAnchorElement>) {
     if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey || evento.button !== 0) return
     evento.preventDefault()
     navegar(para)
   }
   return (
-    <a href={para} onClick={aoClicar} aria-current={atual ? 'page' : undefined}>
+    <a href={para} onClick={aoClicar} aria-current={atual ? 'page' : undefined} className={className}>
       {children}
     </a>
   )

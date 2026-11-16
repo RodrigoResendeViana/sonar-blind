@@ -213,3 +213,8 @@ def test_camera_comum_sem_ponto_mantem_o_roteiro_simulado(cliente, sonar):
     assert no_ponto["fala"].count("Avisei os motoristas que vêm para cá.") == 1
     assert "câmera" not in no_ponto["fala"]
 
+
+
+def test_so_a_maquete_com_a_camera_desligada_avisa(cliente):
+    no_ponto = _ate_o_ponto(Conversa(cliente, cenario_demo="maquete"))
+    assert "A câmera do ponto está desligada agora" in no_ponto["fala"]

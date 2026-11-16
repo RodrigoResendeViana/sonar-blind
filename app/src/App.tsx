@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 
 import { ProvedorAnuncio, RegiaoAnuncio } from './anuncio'
-import { Link, ROTAS, useCaminho } from './navegacao'
+import { Link, useCaminho } from './navegacao'
 import Consentimento, { consentimentoDado } from './telas/Consentimento'
+import Inicio from './telas/Inicio'
 import Motorista from './telas/Motorista'
-import Painel from './telas/Painel'
 import Passageiro from './telas/Passageiro'
 import Ponto from './telas/Ponto'
-import Privacidade from './telas/Privacidade'
 
 export default function App() {
   const caminho = useCaminho()
@@ -30,30 +29,27 @@ export default function App() {
   }
 
   let tela
-  if (caminho === '/motorista') tela = <Motorista />
+  if (caminho === '/passageiro') {
+    tela = consentiu ? <Passageiro /> : <Consentimento aoAceitar={() => setConsentiu(true)} />
+  } else if (caminho === '/motorista') tela = <Motorista />
   else if (caminho === '/ponto') tela = <Ponto />
-  else if (caminho === '/painel') tela = <Painel />
-  else if (caminho === '/privacidade') tela = <Privacidade />
-  else tela = consentiu ? <Passageiro /> : <Consentimento aoAceitar={() => setConsentiu(true)} />
+  else tela = <Inicio />
 
   return (
     <ProvedorAnuncio>
-      <a className="pular" href="#conteudo" onClick={pularParaConteudo}>
-        Pular para o conteúdo
-      </a>
-      <header>
-        <nav aria-label="Telas do Sonar">
-          <ul>
-            {ROTAS.map((rota) => (
-              <li key={rota.caminho}>
-                <Link para={rota.caminho} atual={rota.caminho === caminho}>
-                  {rota.nome}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
+      {caminho !== '/' && (
+        <>
+          <a className="pular" href="#conteudo" onClick={pularParaConteudo}>
+            Pular para o conteúdo
+          </a>
+          {/* sem menu: a pessoa escolhe o perfil no início; daqui só se volta para lá */}
+          <header>
+            <Link para="/" className="voltar">
+              <span aria-hidden="true">←</span> Início
+            </Link>
+          </header>
+        </>
+      )}
       <main id="conteudo" ref={principal}>
         {tela}
         <RegiaoAnuncio />

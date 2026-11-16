@@ -462,8 +462,7 @@ class Conversa:
         sessao.estado = "no_ponto"
         sessao.marcos.clear()
         detector = await self._quem_detecta(parada.id)
-        if sessao.demo:
-            self._rodar_demo(sessao, espera["id"], parada.id, detector is not None)
+        cenario = self._rodar_demo(sessao, espera["id"], parada.id, detector is not None) if sessao.demo else None
 
         abertura = f"Você chegou a{ponto_falado(parada.nome)}. " if chegou_pelo_gps else ""
         if detector == "ponto":
@@ -474,6 +473,10 @@ class Conversa:
             )
         else:
             aviso_ponto = "Avisei os motoristas que vêm para cá."
+            if cenario == "maquete":  # a pessoa escolheu só a câmera e a maquete, e nenhuma está ligada
+                aviso_ponto += (
+                    " A câmera do ponto está desligada agora, então não vou conseguir dizer qual ônibus chegou."
+                )
         minutos = await self._minutos_proximo(sessao, trecho)
         previsao = f" {self._frase_previsao(linha, minutos)}" if minutos is not None else ""
         return [
@@ -638,7 +641,7 @@ class Conversa:
             return "camera"
         return None
 
-    def _rodar_demo(self, sessao: Sessao, espera_id: str, parada_id: str, com_hardware: bool) -> None:
+    def _rodar_demo(self, sessao: Sessao, espera_id: str, parada_id: str, com_hardware: bool) -> str:
         cenario = sessao.cenario_demo
         if cenario == "auto":
             # com o Sonar Ponto (ou a câmera sozinha) ligado na maquete, quem detecta o ônibus é ele
@@ -648,6 +651,7 @@ class Conversa:
         tarefa = asyncio.create_task(demo.executar(self.sonar, espera_id, cenario, self.sonar.cfg.demo_velocidade))
         self.tarefas.add(tarefa)
         tarefa.add_done_callback(self.tarefas.discard)
+        return cenario
 
     def _distancia_ao(self, sessao: Sessao, ponto: PontoRede) -> float | None:
         if sessao.lat is None or sessao.lon is None:

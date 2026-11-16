@@ -50,28 +50,64 @@ a {
   white-space: nowrap;
 }
 
-header nav ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  list-style: none;
-  margin: 0;
-  padding: 0.75rem;
+header {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
 }
 
-header nav a {
-  display: inline-block;
-  padding: 0.6rem 0.9rem;
+a.voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 3rem;
+  padding: 0.4rem 0.9rem;
   border: 2px solid var(--borda);
   border-radius: 0.5rem;
   text-decoration: none;
+  font-weight: 600;
 }
 
-header nav a[aria-current='page'] {
+/* Início: um cartão grande por perfil (alvos de toque bem maiores que 56 px) */
+.perfis {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+a.perfil {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 6rem;
+  padding: 1.1rem 1.25rem;
+  border: 2px solid var(--borda);
+  border-radius: 0.9rem;
+  background: var(--painel);
+  color: var(--texto);
+  text-decoration: none;
+}
+
+a.perfil.principal {
   background: var(--destaque);
   border-color: var(--destaque);
   color: #000;
+}
+
+.perfil-nome {
+  font-size: 1.5rem;
   font-weight: 700;
+}
+
+.perfil-descricao {
+  font-size: 1rem;
+  color: var(--suave);
+}
+
+a.perfil.principal .perfil-descricao {
+  color: #1d1d1d;
 }
 
 main {
@@ -232,45 +268,6 @@ button:disabled {
   width: 100%;
   border-radius: 0.5rem;
   background: #000;
-}
-
-.cartoes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem;
-  margin: 1rem 0;
-}
-
-.cartao {
-  background: var(--painel);
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-}
-
-.cartao dt {
-  color: var(--suave);
-}
-
-.cartao dd {
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: 700;
-}
-
-.rolagem {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--borda);
 }
 
 @media (prefers-reduced-motion: reduce) {

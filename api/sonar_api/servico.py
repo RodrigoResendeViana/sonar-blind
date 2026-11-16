@@ -51,6 +51,10 @@ ENCERRAM_STREAM = {
 }
 LIMIAR_PAROU_S = 3.0
 MINUTOS_BOTAO = 10  # quanto dura o pedido feito pelo botão físico do ponto
+# Depois do "ciente" do motorista, o ônibus está perto. Se nada for detectado, o passageiro ouve um
+# lembrete depois deste tempo e outro no triplo dele (demonstração: 60 s, dividido pela velocidade).
+LEMBRETE_APOS_CIENTE_S = 120
+LEMBRETE_APOS_CIENTE_DEMO_S = 60
 CONFIANCA_MINIMA = 0.6
 PADRAO_REF = re.compile(r"^[A-Za-z0-9-]{1,40}$")
 
@@ -139,6 +143,7 @@ class Sonar:
         self.previsao_demo_por_parada: dict[str, list[Veiculo]] = {}
         self._trava = threading.RLock()
         self._fechado = False
+        self._lembretes: dict[str, int] = {}  # espera -> lembretes já falados (só na memória)
         if not cfg.sal_hash:
             log.warning("SONAR_SAL_HASH não definido: usando um sal temporário")
         self._sal = cfg.sal_hash or secrets.token_hex(16)
@@ -707,12 +712,13 @@ class Sonar:
                 return False
             if espera.ciente_em is None:
                 espera.ciente_em = agora()
+                linha = espera.linha_avisada or "ônibus"
                 self._emitir(
                     s,
                     saida,
                     espera,
                     "motorista_ciente",
-                    "O motorista foi avisado e confirmou.",
+                    f"O motorista do {linha} viu o aviso e confirmou. Agora é esperar: eu aviso quando ele chegar.",
                     prefixo=prefixo,
                     simulado=bool(dados.get("simulado")),
                 )
@@ -992,8 +998,11 @@ class Sonar:
                             f"A linha {espera.passagem_linha} passou e você não confirmou o embarque. "
                             "Se ele não parou, diga: quero reclamar.",
                         )
+                self._lembrar_apos_ciente(s, saida, espera, instante)
             for parada_id in afetadas:
                 self._comandar_ponto(s, saida, parada_id)
+            ids_ativas = {e.id for e in ativas if e.status == "aguardando"}
+            self._lembretes = {k: v for k, v in self._lembretes.items() if k in ids_ativas}
 
             limite = instante - timedelta(seconds=90)  # o sinal de vida vem a cada 30 s
             sem_sinal = s.scalars(
@@ -1004,6 +1013,43 @@ class Sonar:
                 DISPOSITIVO_ONLINE.labels(dispositivo.tipo, dispositivo.ref).set(0)
                 self._avisar_queda(s, saida, dispositivo)
             ESPERAS_ATIVAS.set(sum(1 for e in ativas if e.status == "aguardando"))
+
+    def _lembrar_apos_ciente(self, s: Session, saida: _Saida, espera: Espera, instante: datetime) -> None:
+        """O motorista confirmou, mas nenhum ônibus foi detectado: o passageiro não fica no silêncio."""
+        if espera.status != "aguardando" or espera.ciente_em is None or espera.passagem_em is not None:
+            return
+        feitos = self._lembretes.get(espera.id, 0)
+        if feitos >= 2:
+            return
+        if espera.demo:
+            intervalo = LEMBRETE_APOS_CIENTE_DEMO_S / max(self.cfg.demo_velocidade, 0.01)
+        else:
+            intervalo = LEMBRETE_APOS_CIENTE_S
+        if (instante - espera.ciente_em).total_seconds() < intervalo * (1 + 2 * feitos):  # no 1x e no 3x
+            return
+        self._lembretes[espera.id] = feitos + 1
+        linha = espera.linha_avisada or "ônibus"
+        if feitos == 0:
+            quem = "a câmera do ponto ler o letreiro" if self._detector_online(s, espera.parada_id) else "ele chegar"
+            fala = (
+                f"O motorista do {linha} já confirmou, então ele deve estar perto. Eu aviso quando {quem}. "
+                "Se você já entrou, diga: embarquei."
+            )
+        else:
+            fala = (
+                f"Ainda não vi o {linha} chegar. Se você já entrou, diga: embarquei. "
+                "Se ele passou sem parar, diga: quero reclamar."
+            )
+        self._emitir(s, saida, espera, "lembrete_espera", fala, vibrar="curta")
+
+    @staticmethod
+    def _detector_online(s: Session, parada_id: str) -> bool:
+        """Há quem veja o ônibus chegar nesta parada: o Sonar Ponto, ou a câmera sozinha (ex.: o celular)."""
+        ponto = s.get(Dispositivo, f"ponto:{parada_id}")
+        if ponto is not None and ponto.online:
+            return True
+        camera = s.get(Dispositivo, f"camera:{parada_id}")
+        return bool(camera is not None and camera.online and (camera.dados or {}).get("sem_ponto"))
 
     # ------------------------------------------------------------------ robô de ocorrências (RPA)
 
