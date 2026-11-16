@@ -1,7 +1,7 @@
 # Mapa de dados pessoais (LGPD)
 
 Usar o Sonar revela deficiência visual, que é dado pessoal sensível (LGPD, art. 5º, II). A base
-legal é o consentimento específico e destacado (art. 11, I), pedido na primeira tela do app. O
+legal é o consentimento específico e destacado (art. 11, I), pedido antes da primeira tela do passageiro. O
 desenho segue a minimização (art. 6º, III): o Sonar não sabe quem é o usuário.
 
 | Dado | Onde fica | Para quê | Quanto tempo | Quem acessa |

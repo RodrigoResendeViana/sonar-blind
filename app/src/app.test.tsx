@@ -33,22 +33,6 @@ const ESPERA = {
   ocorrencia: null,
 }
 
-const INDICADORES = {
-  esperas: 2,
-  avisos_enviados: 1,
-  avisos_ciente: 1,
-  taxa_ciente: 1,
-  embarques: 1,
-  embarques_validados_camera: 1,
-  nao_parou: 1,
-  nao_parou_por_100_esperas: 50,
-  tempo_medio_espera_min: 4.5,
-  ocorrencias_por_status: { anonima: 1 },
-  por_linha: [{ linha: 'DEMO-10', esperas: 2, avisos: 1, cientes: 1, embarques: 1, nao_parou: 1 }],
-  dispositivos: [{ tipo: 'ponto', id: 'demo', online: true, ultimo_sinal_em: '2026-11-08T18:00:00Z' }],
-  gerado_em: '2026-11-08T18:00:00Z',
-}
-
 class EventSourceFalso {
   static abertas: EventSourceFalso[] = []
   onmessage: ((mensagem: MessageEvent<string>) => void) | null = null
@@ -126,7 +110,6 @@ function respostaPara(url: string, init?: RequestInit): unknown {
   }
   if (url.endsWith('/esperas') && init?.method === 'POST') return ESPERA
   if (url.includes('/esperas/')) return ESPERA
-  if (url.includes('/painel/indicadores')) return INDICADORES
   return {}
 }
 
@@ -155,17 +138,17 @@ afterEach(() => {
 
 describe('acessibilidade (axe)', () => {
   it('tela de consentimento', async () => {
+    window.history.pushState({}, '', '/passageiro')
     const { container } = render(<App />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Antes de começar' })).toBeTruthy()
     await semViolacoes(container)
   })
 
   it.each([
-    ['/', 'Sonar'],
+    ['/', 'Bem-vindo ao Sonar'],
+    ['/passageiro', 'Sonar'],
     ['/motorista', 'Sonar Bordo (motorista simulado)'],
     ['/ponto', 'Sonar Ponto (simulado)'],
-    ['/painel', 'Painel da cidade'],
-    ['/privacidade', 'Privacidade'],
   ])('tela %s', async (caminho, titulo) => {
     localStorage.setItem('sonar.consentimento', '2026-11-08')
     window.history.pushState({}, '', caminho)
@@ -178,9 +161,35 @@ describe('acessibilidade (axe)', () => {
   })
 })
 
+describe('início', () => {
+  it('cada perfil leva à sua tela, sem menu no cabeçalho', async () => {
+    render(<App />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Bem-vindo ao Sonar' })).toBeTruthy()
+    expect(screen.queryByRole('navigation')).toBeNull()
+
+    fireEvent.click(screen.getByRole('link', { name: /Sou passageiro/ }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antes de começar' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Concordo e quero usar' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sonar' })).toBeTruthy()
+    expect(window.location.pathname).toBe('/passageiro')
+
+    fireEvent.click(screen.getByRole('link', { name: /Início/ }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Bem-vindo ao Sonar' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('link', { name: /Sou motorista/ }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sonar Bordo (motorista simulado)' })).toBeTruthy()
+  })
+
+  it('rotas que saíram do MVP voltam para o início', async () => {
+    window.history.pushState({}, '', '/painel')
+    render(<App />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Bem-vindo ao Sonar' })).toBeTruthy()
+  })
+})
+
 describe('jornada por voz', () => {
   it('diz o destino, recebe o plano, chega ao ponto e ouve o ônibus', async () => {
     localStorage.setItem('sonar.consentimento', '2026-11-08')
+    window.history.pushState({}, '', '/passageiro')
     render(<App />)
     expect(await screen.findByText(/diga para onde você quer ir/, { selector: '.status' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Toque para falar/ })).toBeTruthy()

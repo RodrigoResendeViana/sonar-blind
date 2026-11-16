@@ -1,5 +1,3 @@
-import { Link } from '../navegacao'
-
 const CHAVE = 'sonar.consentimento'
 export const VERSAO_CONSENTIMENTO = '2026-11-08'
 
@@ -44,7 +42,9 @@ export default function Consentimento({ aoAceitar }: { aoAceitar: () => void }) 
         Concordo e quero usar
       </button>
       <p>
-        <Link para="/privacidade">Ler a política de privacidade</Link>
+        <a href="https://github.com/RodrigoResendeViana/sonar-blind/blob/main/docs/lgpd.md" target="_blank" rel="noreferrer">
+          Ver o mapa completo dos dados (abre em outra aba)
+        </a>
       </p>
     </section>
   )

@@ -24,7 +24,7 @@ sem app ou sem internet: o botão do poste avisa todos os motoristas
 | Previsão em tempo real | pronta; falta o token do Olho Vivo (passo 2) |
 | IA generativa (perguntas livres e planejamento por ferramenta) | no ar |
 | RPA (reclamação por voz → n8n → protocolo) | no ar |
-| Botão do poste | no firmware do Sonar Ponto e na tela "Ponto (simulado)" |
+| Botão do poste | no firmware do Sonar Ponto e no perfil "Ponto de ônibus" do app |
 | Braço que segue o letreiro, ESP32-CAM opcional | firmware pronto; falta montar e calibrar |
 | Visão | funciona só com OCR; o modelo YOLO melhora (passo 4) |
 | Câmera do celular no lugar do hardware | pronta: `.\iniciar.ps1 -SemPonto -Camera "http://IP:4747/video"` (passo 4) |
@@ -33,12 +33,12 @@ sem app ou sem internet: o botão do poste avisa todos os motoristas
 
 1. Merge do PR `jornada-por-voz` → o pipeline faz o deploy.
 2. No celular (Chrome no Android ou Safari no iPhone), abra https://sonar.rodrigoviana.app.br,
-   aceite o consentimento e permita o microfone.
+   toque em "Sou passageiro", aceite o consentimento e permita o microfone.
 3. Toque no botão e diga **"quero ir para o hospital"**; depois "sim", "cheguei", espere o ônibus,
    "embarquei". Para ouvir o app sem leitor de tela: "Mais opções" → "Ler as respostas em voz alta".
 4. Teste a reclamação: "Mais opções" → "O ônibus passa direto"; repita a jornada e, quando ele
    passar, diga "quero reclamar". O protocolo chega em segundos.
-5. Teste o botão do poste: tela "Ponto (simulado)" → "Botão do poste".
+5. Teste o botão do poste: no início do app, "Ponto de ônibus" → "Botão do poste".
 
 Se algo não falar o que devia, mande o que apareceu na tela.
 
