@@ -50,6 +50,74 @@ botão do poste. Depois do "Ciente", quem diz qual ônibus chegou é a câmera d
 `edge/iniciar.ps1 -SemPonto`) ou, sem câmera, a demonstração; se nada chegar, o app lembra o
 passageiro do que fazer. Com o GTFS da SPTrans carregado, o mesmo vale para as linhas reais de São Paulo.
 
+## Arquitetura
+
+```mermaid
+flowchart TB
+  subgraph rua["Na rua e no ônibus"]
+    direction LR
+    PAS["<b>Passageiro cego</b><br/>app de voz<br/>no celular"]
+    PONTO["<b>Ponto de ônibus</b><br/>Sonar Ponto,<br/>câmera e braço"]
+    BORDO["<b>Ônibus</b><br/>Sonar Bordo<br/>do motorista"]
+    PAS ~~~ PONTO ~~~ BORDO
+  end
+
+  subgraph github["GitHub"]
+    direction LR
+    GHA["<b>Actions</b><br/>Gitleaks, Semgrep,<br/>testes e Trivy"] --> GHCR[("<b>GHCR</b><br/>imagens")]
+  end
+
+  subgraph aws["AWS us-east-1 · tudo criado por Terraform"]
+    direction TB
+    SSM["<b>SSM e Parameter Store</b><br/>deploy sem SSH<br/>e segredos"]
+    subgraph ec2["EC2 · docker compose"]
+      direction LR
+      ENT["<b>Entrada</b><br/>Caddy: HTTPS<br/>Mosquitto: MQTT TLS"]
+      NUC["<b>API + Postgres</b><br/>conversa, planejador<br/>e esperas"]
+      INT["<b>IA e RPA</b><br/>Ollama e n8n"]
+      MON["<b>Monitoramento</b><br/>Prometheus, Grafana<br/>e Alertmanager"]
+      ENT --> NUC --> INT
+      MON -.->|métricas| NUC
+    end
+    SSM -->|deploy| ec2
+  end
+
+  subgraph fora["Serviços externos"]
+    direction LR
+    SPT["<b>SPTrans</b><br/>Olho Vivo e GTFS"] ~~~ OSM["<b>OpenStreetMap</b><br/>endereços"] ~~~ TG["<b>Telegram</b><br/>alertas"]
+  end
+
+  rua <-->|"HTTPS 443<br/>MQTT TLS 8883"| aws
+  github -->|"deploy: OIDC + SSM<br/>imagens do GHCR"| aws
+  aws -->|"previsão, endereços<br/>e alertas"| fora
+
+  classDef pessoa fill:#e8f5e9,stroke:#2e7d32,color:#1b1f24
+  classDef nuvem fill:#fff3e0,stroke:#e65100,color:#1b1f24
+  classDef git fill:#eceff1,stroke:#455a64,color:#1b1f24
+  classDef externo fill:#e3f2fd,stroke:#1565c0,color:#1b1f24
+  class PAS,PONTO,BORDO pessoa
+  class SSM,ENT,NUC,INT,MON nuvem
+  class GHA,GHCR git
+  class SPT,OSM,TG externo
+  style rua fill:#f6fbf6,stroke:#2e7d32,color:#1b1f24
+  style github fill:#f7f8f9,stroke:#455a64,color:#1b1f24
+  style aws fill:#fffaf3,stroke:#e65100,color:#1b1f24
+  style ec2 fill:#ffffff,stroke:#e65100,stroke-dasharray:4 3,color:#1b1f24
+  style fora fill:#f5f9ff,stroke:#1565c0,color:#1b1f24
+```
+
+- **Na rua e no ônibus:** o app de voz fala com a nuvem por HTTPS; o Sonar Ponto, a câmera, o braço
+  e o Sonar Bordo, por MQTT com TLS. Todos só abrem conexões de saída: nada na rua tem porta aberta.
+- **AWS:** uma EC2 criada por Terraform roda tudo em docker compose, com só as portas 80, 443 e 8883
+  abertas; os segredos ficam no Parameter Store.
+- **GitHub:** o pipeline barra segredo vazado, código inseguro e imagem vulnerável; na `main`,
+  publica as imagens no GHCR e faz o deploy pelo SSM, sem SSH e sem chave da AWS guardada.
+- **Serviços externos:** previsão dos ônibus (Olho Vivo e GTFS da SPTrans), endereços
+  (OpenStreetMap) e alertas (Telegram).
+
+O que roda dentro da EC2, o caminho do push até o ar e a segurança em camadas estão em
+[`docs/arquitetura.md`](docs/arquitetura.md).
+
 ## Repositório
 
 ```
