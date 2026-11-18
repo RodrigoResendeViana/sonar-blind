@@ -34,6 +34,10 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # a 2.1 derruba em 30 s quem não mandou o CONNECT; o Sonar Braço no Wokwi leva uns 30 s no TLS
+      - dependency-name: eclipse-mosquitto
+        versions: [">= 2.1"]
   - package-ecosystem: terraform
     directories: [/infra/terraform/bootstrap, /infra/terraform/nuvem]
     schedule:
