@@ -180,18 +180,70 @@ def test_espera_expira_e_desliga_o_ponto(cliente, sonar, publicador):
     assert mensagens(publicador, "sonar/parada/demo/cmd")[-1] == {"acao": "desativar"}
 
 
+def _passar_carencia(sonar) -> None:
+    """Faz de conta que as quedas ainda sem aviso aconteceram há um minuto."""
+    for chave in sonar._quedas:
+        sonar._quedas[chave] -= timedelta(seconds=60)
+
+
+def _quantas(sonar, espera_id: str, tipo: str) -> int:
+    return sum(1 for e in sonar.eventos_desde(espera_id)[1] if e["tipo"] == tipo)
+
+
 def test_queda_do_sonar_ponto_e_da_camera(cliente, sonar):
     sonar.receber_mqtt("sonar/parada/demo/status", {"online": True, "rssi": -60})
     sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True})
     espera_id = criar_espera(cliente)["id"]
     sonar.receber_mqtt("sonar/parada/demo/status", {"online": False})
     sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": False})
-    sonar.cancelar_espera(espera_id)
-    tipos = [e["tipo"] for e in ler_sse(cliente, f"/esperas/{espera_id}/eventos")]
-    assert "ponto_offline" in tipos
-    assert "sem_confirmacao_visual" in tipos
     texto = cliente.get("/metrics").text
-    assert 'sonar_dispositivo_online{id="demo",tipo="ponto"} 0.0' in texto
+    assert 'sonar_dispositivo_online{id="demo",tipo="ponto"} 0.0' in texto  # o painel vê na hora
+
+    sonar.verificar_temporizadores()  # pode ser só uma reconexão: o passageiro ainda não ouve nada
+    assert _quantas(sonar, espera_id, "ponto_offline") == _quantas(sonar, espera_id, "sem_confirmacao_visual") == 0
+    _passar_carencia(sonar)
+    sonar.verificar_temporizadores()
+    assert _quantas(sonar, espera_id, "ponto_offline") == _quantas(sonar, espera_id, "sem_confirmacao_visual") == 1
+
+
+def test_camera_que_cai_e_volta_logo_nao_interrompe_o_passageiro(cliente, sonar):
+    """Ex.: duas câmeras com a mesma --parada se derrubando: cada queda dura menos de 1 s."""
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True, "sem_ponto": True})
+    espera_id = criar_espera(cliente)["id"]
+    for _ in range(10):
+        sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": False})
+        sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True, "sem_ponto": True})
+    sonar.receber_mqtt(
+        "sonar/parada/demo/camera/passagem", {"linha_lida": "DEMO-10", "confianca": 0.9, "tempo_parado_s": 3.2}
+    )
+    _passar_carencia(sonar)
+    sonar.verificar_temporizadores()
+    assert _quantas(sonar, espera_id, "sem_confirmacao_visual") == 0
+    assert _falas(cliente, sonar, espera_id, "onibus_chegando")[0].startswith("Chegando agora: linha DEMO-10")
+
+
+def test_camera_fora_do_ar_e_avisada_uma_vez_por_espera(cliente, sonar):
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True})
+    espera_id = criar_espera(cliente)["id"]
+    for _ in range(3):  # cai, fica fora, volta... e cai de novo
+        sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": False})
+        _passar_carencia(sonar)
+        sonar.verificar_temporizadores()
+        sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True})
+    assert _quantas(sonar, espera_id, "sem_confirmacao_visual") == 1
+
+
+def test_espera_aberta_logo_depois_da_queda_aguarda_a_carencia(cliente, sonar):
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": True})
+    sonar.receber_mqtt("sonar/parada/demo/camera/status", {"online": False})
+    espera_id = criar_espera(cliente)["id"]
+    assert _quantas(sonar, espera_id, "sem_confirmacao_visual") == 0  # pode voltar em seguida
+    _passar_carencia(sonar)
+    sonar.verificar_temporizadores()
+    assert _quantas(sonar, espera_id, "sem_confirmacao_visual") == 1
+
+    outra = criar_espera(cliente)["id"]  # a câmera continua fora: a espera nova é avisada na hora
+    assert _quantas(sonar, outra, "sem_confirmacao_visual") == 1
 
 
 def test_dispositivo_sem_sinal_vira_offline(sonar, cliente):

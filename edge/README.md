@@ -53,6 +53,11 @@ Na primeira vez, o script cria o `.venv` e instala tudo (alguns minutos). A senh
 na hora e não fica gravada; pegue no CloudShell:
 `aws ssm get-parameter --name /sonar/mqtt/usuarios/camera-demo --with-decryption --query Parameter.Value --output text`.
 
+**Uma câmera por parada.** O broker aceita uma conexão por nome (`camera-demo`). Se outra câmera entrar
+com a mesma parada (outra janela, ou outro computador), a mais antiga sai e avisa no terminal:
+"outra câmera entrou como camera-demo". Para usar o braço e o celular juntos, é uma câmera só:
+`.\iniciar.ps1 -Braco -SemPonto -Camera "http://IP:4747/video"`.
+
 ## Sem o Sonar Ponto: câmera do celular
 
 Com `-SemPonto` (`--sem-ponto`), a câmera faz o papel do ultrassom: o letreiro na frente dela é o

@@ -1,3 +1,6 @@
+from paho.mqtt.packettypes import PacketTypes
+from paho.mqtt.reasoncodes import ReasonCode
+from sonar_camera.__main__ import SESSAO_TOMADA, qos_do
 from sonar_camera.detectores import Leitura
 from sonar_camera.servico import ServicoCamera
 from sonar_camera.votacao import Votacao, casar_linha
@@ -210,3 +213,13 @@ def test_sem_ponto_trocar_o_letreiro_e_outro_onibus():
     assert [(p["linha_lida"], p["parou"]) for p in _passagens(publicados)] == [("DEMO-10", True), ("DEMO-20", True)]
     visoes = [d["linha_lida"] for t, d in publicados if t.endswith("/visao")]
     assert visoes == ["DEMO-10", "DEMO-20"]  # sem repetir a mesma leitura
+
+
+def test_mira_vai_sem_fila_e_o_resto_com_confirmacao():
+    assert qos_do("sonar/parada/demo/mira") == 0  # posição velha não serve para o braço
+    assert {qos_do(f"sonar/parada/demo/{t}") for t in ("visao", "camera/status", "camera/passagem")} == {1}
+
+
+def test_reconhece_quando_outra_camera_entra_no_lugar():
+    assert ReasonCode(PacketTypes.DISCONNECT, "Session taken over") == SESSAO_TOMADA
+    assert ReasonCode(PacketTypes.DISCONNECT, "Unspecified error") != SESSAO_TOMADA
