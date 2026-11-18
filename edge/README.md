@@ -2,7 +2,7 @@
 
 Roda no notebook do ponto. Lê a webcam **só enquanto há uma espera ativa**, acha o letreiro com
 o YOLO de [`visao/`](../visao/README.md), lê o texto com OCR, casa com o vocabulário restrito da parada, confirma
-depois de 3 quadros seguidos iguais e publica só o texto em `sonar/parada/{id}/visao`:
+depois de 3 leituras seguidas do OCR iguais e publica só o texto em `sonar/parada/{id}/visao`:
 
 ```json
 {"linha_lida": "DEMO-10", "confianca": 0.91, "passou_em": "2026-11-12T13:05:00Z"}
@@ -87,6 +87,10 @@ Celular como câmera (Android ou iPhone):
    - DEMO-20 passando pelo quadro sem parar → "passou sem parar. Quer registrar uma reclamação?"
 
 Deixe "Mais opções" → cenário em **automático**: os outros cenários simulam os ônibus por conta própria.
+
+No terminal da câmera, `comando: ativo=True linhas=['DEMO-20']` só quer dizer que ela recebeu a espera e
+começou a procurar. Quando confirma a linha (3 leituras seguidas do OCR, uns 3 s), aparece `li DEMO-20 (91%)`;
+quando manda a chegada para a API, `avisei a API: o DEMO-20 parou` (ou `passou direto`).
 
 ## Rodar no Linux/macOS
 

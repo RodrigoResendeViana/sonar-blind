@@ -14,7 +14,7 @@ letreiro, para o braço do Maker Lab). Nenhuma imagem sai do notebook.
 
 O serviço da câmera escolhe sozinho: se `edge/modelos/letreiro.pt` existir, usa o YOLO (nível 2/3);
 senão, só o OCR (nível 1). Em qualquer nível, o texto lido passa pelo vocabulário restrito da parada
-(só as linhas que passam ali) e por uma votação de 3 quadros seguidos (`edge/sonar_camera/votacao.py`).
+(só as linhas que passam ali) e por uma votação de 3 leituras seguidas do OCR (`edge/sonar_camera/votacao.py`).
 
 Entre uma detecção e outra (o OCR leva até ~1 s na CPU), um rastreador por correlação
 (`edge/sonar_camera/rastreador.py`) segue o letreiro quadro a quadro: é o que deixa o braço suave.

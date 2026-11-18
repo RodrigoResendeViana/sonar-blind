@@ -7,6 +7,7 @@ letreiro na frente dela é o ônibus no ponto. Se o letreiro fica parado 3 s, el
 direto. O aviso vai em `sonar/parada/{id}/camera/passagem`.
 """
 
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from datetime import datetime, timezone
 
 from .detectores import Detector, Leitura
 from .votacao import Votacao, casar_linha
+
+log = logging.getLogger("sonar.camera")
 
 Publicar = Callable[[str, dict, bool], None]
 
@@ -115,7 +118,9 @@ class ServicoCamera:
         leitura_alvo: Leitura | None = None
         prioridade_alvo: tuple = (-1, False, 0.0)
         alvos_esperados = {linha.upper() for linha in self.linhas_alvo}
+        leitura_nova = False
         for leitura in self.detector.ler():
+            leitura_nova = leitura_nova or not leitura.rastreada
             casada = casar_linha(leitura.texto, self.vocabulario())
             if casada and not leitura.rastreada:  # a votação só conta leituras novas do OCR
                 confianca = leitura.confianca * casada[1]
@@ -137,7 +142,14 @@ class ServicoCamera:
         self._mirar(alvo)
         if not self.ativo:
             return None
-        confirmada = self.votacao.adicionar(melhor[0] if melhor else None, melhor[1] if melhor else 0.0)
+        # O OCR leva ~1 s por quadro; nos quadros do meio só vem a posição rastreada. Só os quadros com
+        # leitura nova votam: se os do meio votassem "nada", a sequência quebraria e a linha nunca seria
+        # confirmada.
+        confirmada = None
+        if leitura_nova:
+            confirmada = self.votacao.adicionar(melhor[0] if melhor else None, melhor[1] if melhor else 0.0)
+        if confirmada is not None:
+            log.info("li %s (%.0f%%)%s", confirmada[0], confirmada[1] * 100, "" if self.sem_ponto else ": mandei ao Sonar Ponto")
         if self.sem_ponto:
             # posição de um letreiro de linha conhecida (leitura nova ou rastreada) neste quadro
             self._acompanhar(alvo[0] if alvo is not None and alvo[2] is not None else None, confirmada)
@@ -182,6 +194,7 @@ class ServicoCamera:
 
     def _avisar(self, presenca: _Presenca, parou: bool) -> None:
         presenca.avisada = True
+        log.info("avisei a API: o %s %s", presenca.linha, "parou" if parou else "passou direto")
         self.publicar(
             self.topico_passagem,
             {

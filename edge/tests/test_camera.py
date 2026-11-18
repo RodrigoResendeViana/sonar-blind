@@ -223,3 +223,32 @@ def test_mira_vai_sem_fila_e_o_resto_com_confirmacao():
 def test_reconhece_quando_outra_camera_entra_no_lugar():
     assert ReasonCode(PacketTypes.DISCONNECT, "Session taken over") == SESSAO_TOMADA
     assert ReasonCode(PacketTypes.DISCONNECT, "Unspecified error") != SESSAO_TOMADA
+
+
+class DetectorComOcrLento:
+    """Como a DetectorCamera: o OCR traz uma leitura nova a cada ~1 s; nos quadros do meio, só vem a
+    posição que o rastreador está seguindo (rastreada=True)."""
+
+    def __init__(self, texto: str, a_cada: int = 15):
+        self.texto, self.a_cada, self.chamadas = texto, a_cada, 0
+
+    def ler(self):
+        self.chamadas += 1
+        seguida = Leitura(self.texto, 0.8, 0.5, 0.5, rastreada=True)
+        if self.chamadas % self.a_cada == 0:
+            return [Leitura(self.texto, 0.9, 0.5, 0.5), seguida]
+        return [seguida]
+
+
+def test_com_o_ocr_lento_a_linha_e_confirmada_e_a_chegada_avisada():
+    relogio = Relogio()
+    publicados = []
+    servico = ServicoCamera(
+        "demo", DetectorComOcrLento("DEMO-10"), lambda t, d, r: publicados.append((t, d)), ["DEMO-10", "DEMO-20"],
+        relogio=relogio, sem_ponto=True,
+    )
+    servico.ao_comando({"acao": "ativar", "linhas_alvo": ["DEMO-10"]})
+    _rodar(servico, relogio, 4.0, passo=0.05)  # 20 quadros por segundo; o OCR lê a cada 0,75 s
+    assert [d["linha_lida"] for t, d in publicados if t.endswith("/visao")] == ["DEMO-10"]
+    passagem = _passagens(publicados)[0]
+    assert passagem["linha_lida"] == "DEMO-10" and passagem["parou"] is True
