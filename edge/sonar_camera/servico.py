@@ -104,10 +104,13 @@ class ServicoCamera:
                 x, y, linha = alvo
                 self.publicar(self.topico_mira, {"alvo": True, "x": round(x, 3), "y": round(y, 3), "linha": linha}, False)
                 self._ultima_mira = agora
+                if not self._com_alvo:
+                    log.info("mira: seguindo %s; a posição está indo para o braço", linha or "um letreiro")
                 self._com_alvo = True
         elif self._com_alvo and agora - self._alvo_visto_em > 1.0:
             self.publicar(self.topico_mira, {"alvo": False}, False)
             self._com_alvo = False
+            log.info("mira: perdi o letreiro (avisei o braço)")
 
     def passo(self) -> str | None:
         """Processa um quadro. Devolve a linha publicada, se houver."""
