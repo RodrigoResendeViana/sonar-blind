@@ -9,6 +9,8 @@ import argparse
 import json
 import logging
 import os
+import sys
+import threading
 
 import paho.mqtt.client as mqtt
 
@@ -16,6 +18,15 @@ from .detectores import DetectorCamera, DetectorTeclado, escolher_localizador
 from .servico import ServicoCamera
 
 log = logging.getLogger("sonar.camera")
+
+# O broker aceita uma conexão por nome (camera-<parada>). Quando outra câmera entra com o mesmo nome,
+# ele derruba a anterior e, no MQTT 5, avisa com este código ("Session taken over").
+SESSAO_TOMADA = 142
+
+
+def qos_do(topico: str) -> int:
+    """A mira só vale no instante: QoS 0, para não acumular posições velhas enquanto a conexão cai."""
+    return 0 if topico.endswith("/mira") else 1
 
 
 def main() -> None:
@@ -56,11 +67,12 @@ def main() -> None:
     cliente = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"camera-{opcoes.parada}",
-        protocol=mqtt.MQTTv311,
+        protocol=mqtt.MQTTv5,  # o 5 diz por que a conexão caiu (ex.: outra câmera entrou no lugar)
     )
+    substituida = threading.Event()
 
     def publicar(topico: str, dados: dict, retido: bool) -> None:
-        cliente.publish(topico, json.dumps(dados), qos=1, retain=retido)
+        cliente.publish(topico, json.dumps(dados), qos=qos_do(topico), retain=retido)
 
     linhas = [linha.strip() for linha in opcoes.linhas.split(",") if linha.strip()]
     servico = ServicoCamera(
@@ -72,10 +84,13 @@ def main() -> None:
         cliente.tls_set()
     cliente.will_set(servico.topico_status, json.dumps({"online": False}), qos=1, retain=True)
 
+    conectada = threading.Event()
+
     def conectou(cli, _dados, _flags, codigo, _props):
         if codigo.is_failure:
             log.error("broker recusou: %s", codigo)
             return
+        conectada.set()
         cli.subscribe(servico.topico_cmd, qos=1)
         servico.status()
         log.info("conectado; aguardando espera ativa na parada %s", opcoes.parada)
@@ -89,22 +104,42 @@ def main() -> None:
         except ValueError:
             log.warning("comando ignorado: JSON inválido")
 
+    def desconectou(cli, _dados, _flags, codigo, _props):
+        estava_conectada = conectada.is_set()  # senão, foi a senha recusada (já está no log)
+        conectada.clear()
+        if codigo == SESSAO_TOMADA:
+            # Se esta reconectasse, derrubaria a outra, que derrubaria esta... e a cada queda o
+            # passageiro ouviria que a câmera saiu do ar. Fica a mais nova; esta sai.
+            log.error(
+                "outra câmera entrou como camera-%s (outra janela ou outro computador). Esta vai sair: "
+                "deixe só uma câmera rodando por parada.",
+                opcoes.parada,
+            )
+            substituida.set()
+            cli.disconnect()  # não reconecta
+        elif estava_conectada and codigo.is_failure:
+            log.warning("a conexão com o broker caiu (%s); reconectando", codigo)
+
     cliente.on_connect = conectou
     cliente.on_message = mensagem
+    cliente.on_disconnect = desconectou
     cliente.connect_async(os.environ.get("SONAR_MQTT_HOST", "localhost"), int(os.environ.get("SONAR_MQTT_PORTA", "8883")))
     cliente.loop_start()
     if opcoes.modo == "teclado":
         print("Digite a linha que a câmera estaria lendo (ex.: DEMO-10, ou DEMO-10@0.2 para a esquerda).")
     try:
-        servico.rodar()
+        servico.rodar(parar=substituida.is_set)
     except KeyboardInterrupt:
         pass
     finally:
         if hasattr(detector, "fechar"):
             detector.fechar()
-        servico.status(online=False)
+        if not substituida.is_set():  # a que entrou no lugar já está online: não publica a queda por cima
+            servico.status(online=False)
         cliente.loop_stop()
         cliente.disconnect()
+    if substituida.is_set():
+        sys.exit(1)
 
 
 if __name__ == "__main__":

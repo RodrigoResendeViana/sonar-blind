@@ -57,6 +57,9 @@ LEMBRETE_APOS_CIENTE_S = 120
 LEMBRETE_APOS_CIENTE_DEMO_S = 60
 CONFIANCA_MINIMA = 0.6
 PADRAO_REF = re.compile(r"^[A-Za-z0-9-]{1,40}$")
+# A câmera ou o Sonar Ponto que cai e volta logo (reconexão, ou outra câmera entrando no lugar da
+# antiga) não interrompe o passageiro: a queda só vira aviso se durar mais que isto.
+CARENCIA_QUEDA_S = 15
 
 FALA_SEM_CAMERA = (
     "A câmera do ponto está fora do ar. Sem confirmação visual: confirme a linha com o motorista antes de embarcar."
@@ -144,6 +147,7 @@ class Sonar:
         self._trava = threading.RLock()
         self._fechado = False
         self._lembretes: dict[str, int] = {}  # espera -> lembretes já falados (só na memória)
+        self._quedas: dict[str, datetime] = {}  # dispositivo -> quando caiu, até virar aviso (só na memória)
         if not cfg.sal_hash:
             log.warning("SONAR_SAL_HASH não definido: usando um sal temporário")
         self._sal = cfg.sal_hash or secrets.token_hex(16)
@@ -431,8 +435,9 @@ class Sonar:
                 distancia_m=distancia,
                 linhas=normalizadas,
             )
+            # se caiu agora há pouco, ainda pode voltar: quem avisa é o verificar_temporizadores
             ponto = s.get(Dispositivo, f"ponto:{parada.id}")
-            if ponto is not None and not ponto.online:
+            if ponto is not None and not ponto.online and ponto.id not in self._quedas:
                 self._emitir(
                     s,
                     saida,
@@ -441,7 +446,7 @@ class Sonar:
                     "O Sonar Ponto deste ponto está sem conexão. Vou usar só a previsão do Olho Vivo.",
                 )
             camera = s.get(Dispositivo, f"camera:{parada.id}")
-            if camera is not None and not camera.online:
+            if camera is not None and not camera.online and camera.id not in self._quedas:
                 self._emitir(s, saida, espera, "sem_confirmacao_visual", FALA_SEM_CAMERA)
             self._comandar_ponto(s, saida, parada.id)
             resultado = self._espera_dict(s, espera)
@@ -873,7 +878,7 @@ class Sonar:
             return
         online = dados.get("online", True) is not False
         instante = agora()
-        with self._transacao() as (s, saida):
+        with self._transacao() as (s, _saida):
             chave = f"{tipo}:{ref}"
             dispositivo = s.get(Dispositivo, chave)
             estava_online = dispositivo.online if dispositivo else None
@@ -888,23 +893,24 @@ class Sonar:
                 if campo in dados
             }
             if estava_online and not online:
-                self._avisar_queda(s, saida, dispositivo)
+                self._quedas[chave] = instante  # só vira aviso se não voltar logo (verificar_temporizadores)
+            elif online:
+                self._quedas.pop(chave, None)
         DISPOSITIVO_ONLINE.labels(tipo, ref).set(1 if online else 0)
         DISPOSITIVO_ULTIMO_SINAL.labels(tipo, ref).set(instante.timestamp())
 
     def _avisar_queda(self, s: Session, saida: _Saida, dispositivo: Dispositivo) -> None:
         if dispositivo.tipo == "ponto":
-            for espera in self._ativas(s, dispositivo.ref):
-                self._emitir(
-                    s,
-                    saida,
-                    espera,
-                    "ponto_offline",
-                    "O Sonar Ponto perdeu a conexão. Continuo com a previsão do Olho Vivo.",
-                )
+            tipo, fala = "ponto_offline", "O Sonar Ponto perdeu a conexão. Continuo com a previsão do Olho Vivo."
         elif dispositivo.tipo == "camera":
-            for espera in self._ativas(s, dispositivo.ref):
-                self._emitir(s, saida, espera, "sem_confirmacao_visual", FALA_SEM_CAMERA)
+            tipo, fala = "sem_confirmacao_visual", FALA_SEM_CAMERA
+        else:
+            return
+        for espera in self._ativas(s, dispositivo.ref):
+            # uma vez por espera: se o dispositivo voltar e cair de novo, o passageiro já sabe
+            ja_avisou = s.scalar(select(Evento.id).where(Evento.espera_id == espera.id, Evento.tipo == tipo).limit(1))
+            if ja_avisou is None:
+                self._emitir(s, saida, espera, tipo, fala)
 
     def carregar_metricas_dispositivos(self) -> None:
         with self._leitura() as s:
@@ -1012,6 +1018,13 @@ class Sonar:
                 dispositivo.online = False
                 DISPOSITIVO_ONLINE.labels(dispositivo.tipo, dispositivo.ref).set(0)
                 self._avisar_queda(s, saida, dispositivo)
+            for chave, caiu_em in list(self._quedas.items()):
+                if (instante - caiu_em).total_seconds() < CARENCIA_QUEDA_S:
+                    continue
+                del self._quedas[chave]
+                dispositivo = s.get(Dispositivo, chave)
+                if dispositivo is not None and not dispositivo.online:
+                    self._avisar_queda(s, saida, dispositivo)
             ESPERAS_ATIVAS.set(sum(1 for e in ativas if e.status == "aguardando"))
 
     def _lembrar_apos_ciente(self, s: Session, saida: _Saida, espera: Espera, instante: datetime) -> None:

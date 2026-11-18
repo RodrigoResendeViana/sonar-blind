@@ -71,13 +71,15 @@ recebe só o que perdeu.
 | `perguntar_embarque`, `perguntar_parou` | 45 s e 3 min depois da passagem sem "embarquei" |
 | `embarque_confirmado` | `dados.validado_por_camera` |
 | `ocorrencia_registrada`, `ocorrencia_protocolo`, `ocorrencia_inconclusiva` | caminho do "não parou" |
-| `sem_confirmacao_visual`, `ponto_offline`, `olhovivo_indisponivel` | falhas, sempre faladas |
+| `sem_confirmacao_visual`, `ponto_offline`, `olhovivo_indisponivel` | falhas, sempre faladas. A queda da câmera ou do Ponto só é falada se durar mais de 15 s (uma reconexão não interrompe o passageiro), e uma vez por espera |
 | `cancelada`, `expirada` | fim da espera |
 
 ## MQTT (Mosquitto na EC2, TLS na porta 8883)
 
 Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<parada>`,
-`braco-<parada>`, `bordo-<prefixo>`) e a ACL só deixa cada um ler e escrever nos seus tópicos.
+`braco-<parada>`, `bordo-<prefixo>`) e a ACL só deixa cada um ler e escrever nos seus tópicos. O broker aceita uma
+conexão por nome: se uma segunda câmera entra como `camera-<parada>`, a anterior é derrubada (a câmera usa MQTT 5
+para saber disso e sai, em vez de reconectar e derrubar a outra).
 
 | Tópico | De → para | Conteúdo |
 |---|---|---|
@@ -85,9 +87,9 @@ Cada dispositivo tem usuário e senha próprios (`ponto-<parada>`, `camera-<para
 | `sonar/parada/{id}/visao` | câmera → Sonar Ponto | `{"linha_lida","confianca","passou_em"}` (só texto; nenhuma imagem) |
 | `sonar/parada/{id}/evento` | Sonar Ponto → API | passagem: `{"espera_id","linha_lida","confianca","passou_em","tempo_parado_s","parou","camera_ok"}`; botão do poste: `{"tipo":"botao","em"}` (a API avisa os motoristas de todas as linhas do ponto por 10 min) |
 | `sonar/parada/{id}/status` | Sonar Ponto → API (retido, 30 s) | `{"online","estado","rssi","uptime_s","fila","camera_ok","versao"}`; a queda vira `{"online":false}` (testamento MQTT) |
-| `sonar/parada/{id}/camera/status` | câmera → API e Ponto (retido) | `{"online","ativa"}`; com `--sem-ponto`, também `"sem_ponto":true` |
+| `sonar/parada/{id}/camera/status` | câmera → API e Ponto (retido) | `{"online","ativa"}`; com `--sem-ponto`, também `"sem_ponto":true`; a queda vira `{"online":false}` (testamento MQTT) |
 | `sonar/parada/{id}/camera/passagem` | câmera sem o Sonar Ponto → API | `{"linha_lida","confianca","passou_em","tempo_parado_s","parou"}`: letreiro parado 3 s = parou (avisa na hora); sumiu antes = passou direto. A API ignora se o Sonar Ponto da parada estiver online |
-| `sonar/parada/{id}/mira` | câmera → braço (até ~7/s) | `{"alvo":true,"x":0.42,"y":0.5,"linha":"DEMO-10"}` (centro do letreiro, 0 a 1) ou `{"alvo":false}` quando o letreiro some por 1 s |
+| `sonar/parada/{id}/mira` | câmera → braço (até ~7/s, QoS 0) | `{"alvo":true,"x":0.42,"y":0.5,"linha":"DEMO-10"}` (centro do letreiro, 0 a 1) ou `{"alvo":false}` quando o letreiro some por 1 s |
 | `sonar/parada/{id}/braco/status` | braço → API (retido) | `{"online","modo","pan","tilt"}` |
 | `sonar/onibus/{prefixo}/alerta` | API → Sonar Bordo | `{"espera_id","parada_nome","paradas_ate","linha"}` |
 | `sonar/onibus/{prefixo}/ciente` | Sonar Bordo → API | `{"espera_id","horario"}` |
