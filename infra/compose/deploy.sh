@@ -14,7 +14,7 @@ COMPOSE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SEGREDOS=/opt/sonar/segredos
 DADOS=/opt/sonar/dados
 REGISTRO="${SONAR_REGISTRY:-ghcr.io/rodrigoresendeviana}"
-IMAGEM_MOSQUITTO="eclipse-mosquitto:2"
+IMAGEM_MOSQUITTO="eclipse-mosquitto:2.0.23"  # a mesma do docker-compose.yml (gera o arquivo de senhas)
 UID_MOSQUITTO=1883
 UID_NOBODY=65534
 

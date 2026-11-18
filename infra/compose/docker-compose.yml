@@ -81,7 +81,9 @@ services:
 
   mqtt:
     <<: *padrao
-    image: eclipse-mosquitto:2
+    # 2.0, não 2.1: a 2.1 derruba em 30 s quem ainda não mandou o CONNECT, e o TLS do Sonar Braço
+    # simulado no Wokwi leva uns 30 s. A 2.0 espera 90 s. A mesma versão está no deploy.sh.
+    image: eclipse-mosquitto:2.0.23
     user: "1883:1883"
     command: ["mosquitto", "-c", "/mosquitto/config/${SONAR_MQTT_CONF:-mosquitto.local.conf}"]
     ports:

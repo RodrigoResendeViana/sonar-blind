@@ -8,6 +8,7 @@
 //      em diagram.json. Crie a aba libraries.txt (botão "+" > New file) e cole o libraries.txt daqui.
 //   2. Play. No Serial Monitor, cole a senha do braco-demo e tecle Enter. Ela fica só na memória da
 //      simulação: projeto gratuito do Wokwi é público, então a senha NUNCA vai no código.
+//      A conexão leva uns 30 s: o TLS é lento no simulador (no ESP32 de verdade, ~1 s).
 //      CloudShell: aws ssm get-parameter --name /sonar/mqtt/usuarios/braco-demo --with-decryption
 //                  --query Parameter.Value --output text
 //   3. No notebook: .\iniciar.ps1 -Braco -Camera "http://IP_DO_CELULAR:4747/video" e mexa o letreiro
@@ -226,7 +227,7 @@ void manterConexao() {
   const bool horaValida = time(nullptr) > 1700000000;
   if (agora - ultimaTentativaMs < 5000 || !(horaValida || agora > 30000)) return;
   ultimaTentativaMs = agora;
-  Serial.printf("[rede] conectando a %s:%d\n", MQTT_HOST, MQTT_PORTA);
+  Serial.printf("[rede] conectando a %s:%d (no simulador, o TLS leva uns 30 s)\n", MQTT_HOST, MQTT_PORTA);
   const String clienteId = String("braco-") + SONAR_PARADA;
   if (!mqtt.connect(clienteId.c_str(), MQTT_USUARIO, senha.c_str(), topicoStatus.c_str(), 1, true,
                     "{\"online\":false}")) {
