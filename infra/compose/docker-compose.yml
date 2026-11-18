@@ -178,7 +178,7 @@ services:
 
   alertmanager:
     <<: *padrao
-    image: prom/alertmanager:v0.34.2
+    image: prom/alertmanager:v0.35.0
     profiles: [producao]
     entrypoint: ["/bin/sh", "/etc/alertmanager/iniciar.sh"]
     environment:
