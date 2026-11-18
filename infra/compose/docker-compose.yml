@@ -204,7 +204,7 @@ services:
   # painel em https://<domínio>/grafana (usuário admin, senha no Parameter Store)
   grafana:
     <<: *padrao
-    image: grafana/grafana:13.3.0
+    image: grafana/grafana:13.3.1
     profiles: [producao]
     environment:
       GF_SERVER_ROOT_URL: https://${SONAR_SITE_ADDRESS:-localhost}/grafana/
