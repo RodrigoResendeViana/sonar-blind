@@ -22,13 +22,13 @@ Projeto da Global Solution 2026.2 (CitizenTech), 4º ano de Engenharia de Softwa
 
 ## Ficha técnica
 
-| Integrante | RM | Frente |
-|---|---|---|
-| Rodrigo Viana | _preencher_ | Secure DevOps, Maker Lab |
-| _preencher_ | _preencher_ | _preencher_ |
-| _preencher_ | _preencher_ | _preencher_ |
-| _preencher_ | _preencher_ | _preencher_ |
-| _preencher_ | _preencher_ | _preencher_ |
+| Integrante | RM |
+|---|---|
+| Rodrigo Viana | 551057 |
+| Caique Chagas | 551943 |
+| Gabriel Torres | 98600 |
+| Otavio Vitoriano | 552012 |
+| Eduardo Fedeli | 550132 |
 
 | Link | |
 |---|---|
@@ -133,16 +133,8 @@ sonar/
 ├── infra/compose/          docker-compose, Caddyfile, Mosquitto e o deploy.sh
 ├── infra/monitoramento/    Prometheus, alertas no Telegram e Grafana (rodam na EC2)
 ├── .github/workflows/      ci-cd.yml: Gitleaks, Semgrep, testes, Trivy, GHCR, deploy por SSM, ZAP
-└── docs/                   contratos, arquitetura, LGPD, custo, responsabilidade compartilhada
+└── docs/                   arquitetura, contratos de API e MQTT, LGPD, custo, primeira subida
 ```
-
-## Equipes e como contribuir
-
-Cada matéria tem sua pasta e um contrato em [`docs/contratos.md`](docs/contratos.md):
-GenAI em `ia/`, Visão em `visao/` + `edge/`, RPA em `rpa/`, Maker Lab em `firmware/`,
-Secure DevOps em `infra/` e `.github/`. O passo a passo para abrir PR está em
-[`CONTRIBUTING.md`](CONTRIBUTING.md), e o que falta fazer em cada matéria está em
-[`docs/proximos-passos.md`](docs/proximos-passos.md).
 
 ## Rodar na sua máquina
 

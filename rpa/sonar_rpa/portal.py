@@ -1,4 +1,4 @@
-"""Ponto de troca da equipe de RPA: registrar a reclamação no canal oficial."""
+"""Ponto de troca do robô de RPA: registrar a reclamação no canal oficial."""
 
 import uuid
 

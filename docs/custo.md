@@ -13,10 +13,10 @@ Conta nova no plano gratuito: US$ 100 em créditos, válidos até 08/05/2027. Pe
 | **Total** | | **~US$ 40 dos US$ 100** |
 
 O AWS Budgets do Terraform avisa por e-mail em 50%, 80% e 100% de US$ 40/mês, contando o uso
-antes dos créditos. Para economizar: pare a EC2 quando ninguém estiver avaliando
+antes dos créditos. Para economizar: pare a EC2 quando ela não estiver em uso
 (`aws ec2 stop-instances --instance-ids <id>`; o Elastic IP e o disco continuam cobrando pouco).
 
 Sem o LLM local (perfil `ia` desligado), uma t3.small de 2 GiB bastaria, por cerca de US$ 8 no
-mesmo período. Confira os preços na calculadora da AWS antes de fechar o PDF.
+mesmo período.
 
-Fora da AWS: o domínio, que o grupo já tinha (e o Airflow do Big Data, que roda onde a equipe escolher).
+Fora da AWS: o domínio, que já existia, e o Airflow do Big Data, que não roda na AWS.

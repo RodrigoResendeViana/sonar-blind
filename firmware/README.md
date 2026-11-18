@@ -116,7 +116,7 @@ só), `diagram.json` e `libraries.txt` (passo a passo em `docs/maker-lab.md`, se
 
 No simulador, o buzzer ativo não faz som (ele espera um sinal de frequência); acompanhe o padrão pelo monitor serial e pelo LED.
 
-## Testes que viram cenas do vídeo
+## Testes
 
 1. O ônibus certo chega e para: LED aceso, bipe longo e evento com o tempo parado.
 2. O ônibus errado chega: o app diz "não é o seu".

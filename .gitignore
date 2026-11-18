@@ -10,7 +10,7 @@
 firmware/include/secrets.h
 infra/compose/.env
 
-# modelos de visão (grandes; ficam com a equipe de Visão)
+# modelos de visão (grandes; ficam fora do Git)
 edge/modelos/
 
 # Python

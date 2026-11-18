@@ -1,20 +1,17 @@
-# Primeira subida: o passo a passo do Rodrigo
+# Primeira subida: do zero ao ar
 
-O que só você pode fazer, porque exige as suas contas. Leva cerca de 1 hora; os passos 5 e 6
-dependem da propagação do DNS (minutos a algumas horas).
+Como subir o Sonar numa conta AWS nova. Leva cerca de 1 hora; os passos 5 e 6 dependem da
+propagação do DNS (minutos a algumas horas).
 
 ## 1. GitHub
 
-1. Deixe o repositório **público** (Settings > General > Danger Zone > Change visibility). A FIAP
-   pede links públicos, e a EC2 baixa o código por `git clone` sem senha.
-2. Se o código veio num zip: clone o repositório, copie o conteúdo do zip para dentro dele,
-   `git checkout -b fundacao`, `git add -A`, `git commit -m "Fundação do Sonar"`,
-   `git push -u origin fundacao` e abra um pull request para a `main`. O pipeline roda no PR.
+1. O repositório precisa ser **público**: a EC2 baixa o código por `git clone`, sem senha.
+2. O pipeline roda a cada push e a cada pull request para a `main`.
 
 ## 2. Conta AWS
 
 1. Ative o MFA do usuário raiz (menu da conta > Credenciais de segurança).
-2. Para o dia a dia, crie um usuário IAM `rodrigo-admin` com a política `AdministratorAccess` e
+2. Para o dia a dia, crie um usuário IAM administrador (ex.: `sonar-admin`) com a política `AdministratorAccess` e
    MFA, e entre com ele. Use sempre a região **us-east-1 (Norte da Virgínia)**.
 3. Abra o **CloudShell** (ícone `>_` no topo do console). Tudo abaixo roda lá.
 
@@ -128,16 +125,7 @@ Sobe sozinho com o deploy: abra `https://sonar.rodrigoviana.app.br/grafana` (usu
 senha em `aws ssm get-parameter --name /sonar/grafana/senha --with-decryption --query Parameter.Value --output text`).
 Para os alertas irem ao Telegram, siga `infra/monitoramento/README.md`.
 
-## 9. Prints para o PDF de DevOps
-
-- Actions: uma execução verde completa e a execução barrada pelo Trivy (`docs/execucao-barrada.md`).
-- Terraform: `terraform apply` com os recursos criados e o `terraform output`.
-- AWS: EC2 com o papel do SSM, security group só com 80/443/8883, Parameter Store com os
-  parâmetros `/sonar/*` (sem mostrar valores), AWS Budgets.
-- GHCR com as duas imagens; o app aberto no domínio com cadeado.
-- Grafana (`/grafana`) com o painel "Sonar — sinais de ouro" e um alerta chegando no Telegram.
-
-## 10. Depois da correção
+## 9. Desligar tudo
 
 Para não gastar créditos à toa: `terraform destroy` em `nuvem` e depois em `bootstrap` (antes,
 esvazie o bucket: `aws s3 rm s3://sonar-tfstate-<conta> --recursive` e apague as versões no

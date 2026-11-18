@@ -1,6 +1,7 @@
 # Contratos de integração
 
-Cada equipe trabalha contra estes contratos; se um lado atrasa, o outro usa o simulador.
+As interfaces entre o app, a API, o agente de IA, o robô de RPA e os dispositivos. Cada lado tem
+um simulador, então uma parte funciona mesmo sem a outra.
 A especificação completa da API está em [`openapi.json`](openapi.json) e, com o sistema no ar,
 em `https://sonar.rodrigoviana.app.br/api/docs`.
 
@@ -48,7 +49,7 @@ Saída:
 ```
 
 `status` é `ok` ou `nao_consta`. Se `SONAR_IA_URL` estiver definido, a API repassa a pergunta
-para `POST {SONAR_IA_URL}/perguntar` (o agente da equipe de GenAI) e valida a resposta contra
+para `POST {SONAR_IA_URL}/perguntar` (o agente de IA) e valida a resposta contra
 este esquema; resposta fora do esquema ou demora acima de 20 s vira `nao_consta` com
 "tente de novo". Sem o agente, um responder por regras atende só o que está no cadastro e na
 previsão.
