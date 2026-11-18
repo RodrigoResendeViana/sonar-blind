@@ -94,6 +94,8 @@ def main() -> None:
         cli.subscribe(servico.topico_cmd, qos=1)
         servico.status()
         log.info("conectado; aguardando espera ativa na parada %s", opcoes.parada)
+        if opcoes.mirar_sempre:
+            log.info("-Braco: a câmera lê sempre e manda a posição do letreiro para o braço, mesmo sem espera")
         if opcoes.sem_ponto:
             log.info("sem o Sonar Ponto: a câmera avisa sozinha quando o ônibus para ou passa direto")
 
@@ -101,6 +103,8 @@ def main() -> None:
         try:
             servico.ao_comando(json.loads(msg.payload or b"{}"))
             log.info("comando: ativo=%s linhas=%s", servico.ativo, servico.linhas_alvo)
+            if not servico.ativo and not opcoes.mirar_sempre:
+                log.info("sem espera aberta, a câmera não lê e o braço não recebe posição (com -Braco, ela lê sempre)")
         except ValueError:
             log.warning("comando ignorado: JSON inválido")
 

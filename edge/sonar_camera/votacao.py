@@ -2,7 +2,8 @@
 
 O letreiro de LED pisca e alterna textos, e o OCR erra letras. Por isso:
 1. o texto só vale se casar com o vocabulário restrito da parada (linhas que passam ali);
-2. a linha só é confirmada quando N quadros seguidos concordam;
+2. a linha só é confirmada quando N leituras seguidas do OCR concordam (os quadros sem leitura nova
+   não votam: com o OCR levando ~1 s, quem chama só vota quando ele leu de novo);
 3. a mesma linha não é publicada de novo enquanto o ônibus está parado na frente.
 """
 
