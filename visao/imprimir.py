@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 from sintetico import desenhar_letreiro, fonte
 
 A4_DEITADO = (3508 // 2, 2480 // 2)  # 150 dpi
-PADRAO = [("DEMO-10", "TERMINAL EXEMPLO"), ("DEMO-20", "CENTRO")]
+PADRAO = [("DEMO-10", "TERMINAL LESTE"), ("DEMO-20", "CENTRO")]
 
 
 def pagina(linha: str, destino: str, led: bool) -> Image.Image:

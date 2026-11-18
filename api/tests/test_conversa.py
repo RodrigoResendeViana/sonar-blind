@@ -55,7 +55,7 @@ def test_viagem_com_baldeacao_na_demonstracao(cliente):
     assert espera["linhas"] == ["DEMO-20"] and espera["parada_id"] == "demo"
 
     a_bordo = falar("embarquei")
-    assert a_bordo["estado"] == "a_bordo" and "Desça no ponto Centro (exemplo)" in a_bordo["fala"]
+    assert a_bordo["estado"] == "a_bordo" and "Desça no ponto Centro" in a_bordo["fala"]
     time.sleep(0.35)  # viagem simulada (velocidade 100 nos testes)
     baldeacao = falar(evento="tick")
     assert "Agora vamos pegar o DEMO-30" in baldeacao["fala"]
@@ -65,7 +65,7 @@ def test_viagem_com_baldeacao_na_demonstracao(cliente):
     falar("embarquei")
     time.sleep(0.35)
     fim = falar(evento="tick")
-    assert fim["estado"] == "chegou" and "Hospital Exemplo" in fim["fala"]
+    assert fim["estado"] == "chegou" and "Hospital Municipal" in fim["fala"]
 
 
 def test_onibus_passou_direto_e_reclamacao_por_voz(cliente, sonar):

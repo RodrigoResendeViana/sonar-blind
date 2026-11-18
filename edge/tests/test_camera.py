@@ -51,7 +51,7 @@ def test_so_processa_com_espera_ativa_e_publica_so_texto():
     publicadas = []
     servico = ServicoCamera(
         "demo",
-        DetectorFixo([Leitura("DEMO-10 TERMINAL EXEMPLO", 0.9), Leitura("ruido", 0.99)]),
+        DetectorFixo([Leitura("DEMO-10 TERMINAL LESTE", 0.9), Leitura("ruido", 0.99)]),
         lambda topico, dados, retido: publicadas.append((topico, dados, retido)),
         ["DEMO-10", "DEMO-20"],
     )

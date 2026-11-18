@@ -132,7 +132,7 @@ def planejar(
 
 
 def ponto_falado(nome: str) -> str:
-    """'o ponto Praça Exemplo', mas 'o Ponto de demonstração' (sem repetir 'ponto'). Com 'n' na frente vira 'no ...'."""
+    """'o ponto Praça da Matriz', mas 'o Ponto Final' (sem repetir 'ponto'). Com 'n' na frente vira 'no ...'."""
     return f"o {nome}" if nome.strip().lower().startswith("ponto") else f"o ponto {nome}"
 
 

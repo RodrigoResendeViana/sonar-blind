@@ -1,7 +1,7 @@
 [
   {"id": "previsao-linha", "texto": "Quando chega a DEMO-10?", "parada_id": "demo", "esperado": {"status": ["ok"], "contem": ["DEMO-10"], "acao_linha": "DEMO-10"}},
   {"id": "previsao-falada", "texto": "quanto falta pro demo vinte", "parada_id": "demo", "esperado": {"status": ["ok"], "contem": ["DEMO-20"], "acao_linha": "DEMO-20"}},
-  {"id": "destino-terminal", "texto": "Qual ônibus vai para o Terminal Exemplo?", "parada_id": "demo", "esperado": {"status": ["ok"], "contem": ["DEMO-10"], "acao_linha": "DEMO-10"}},
+  {"id": "destino-terminal", "texto": "Qual ônibus vai para o Terminal Leste?", "parada_id": "demo", "esperado": {"status": ["ok"], "contem": ["DEMO-10"], "acao_linha": "DEMO-10"}},
   {"id": "destino-centro", "texto": "Preciso ir para o centro, qual eu pego?", "parada_id": "demo", "esperado": {"status": ["ok"], "contem": ["DEMO-20"], "acao_linha": "DEMO-20"}},
   {"id": "proximo-onibus", "texto": "Qual é o próximo ônibus que passa aqui?", "parada_id": "demo", "esperado": {"status": ["ok"], "contem_algum": ["DEMO-10", "DEMO-20"]}},
   {"id": "quero-esperar", "texto": "Quero esperar a linha DEMO-20", "parada_id": "demo", "esperado": {"status": ["ok"], "contem": ["DEMO-20"], "acao_linha": "DEMO-20"}},

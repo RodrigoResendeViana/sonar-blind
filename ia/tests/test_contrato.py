@@ -10,18 +10,18 @@ from sonar_ia.main import criar_app
 PREVISAO = {
     "parada": {
         "id": "demo",
-        "nome": "Ponto de demonstração",
-        "linhas": [{"codigo": "DEMO-10", "destino": "Terminal Exemplo"}, {"codigo": "DEMO-20", "destino": "Centro"}],
+        "nome": "Avenida Itaquera, 1200",
+        "linhas": [{"codigo": "DEMO-10", "destino": "Terminal Leste"}, {"codigo": "DEMO-20", "destino": "Centro"}],
     },
     "fonte": "demonstracao",
-    "veiculos": [{"linha": "DEMO-10", "destino": "Terminal Exemplo", "minutos": 4}],
+    "veiculos": [{"linha": "DEMO-10", "destino": "Terminal Leste", "minutos": 4}],
 }
 LINHAS = {"fonte": "olhovivo", "linhas": [{"codigo": "8000-10", "origem": "PCA RAMOS", "destino": "TERMINAL LAPA"}]}
 
 
 VIAGEM = {
     "rede": "demonstracao",
-    "destino": "Hospital Exemplo",
+    "destino": "Hospital Municipal",
     "planos": [{"trechos": [{"linha": "DEMO-20"}, {"linha": "DEMO-30"}]}],
     "fala": "Pegue o DEMO-20 e desça no Centro. Lá, pegue o DEMO-30.",
 }
