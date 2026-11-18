@@ -31,14 +31,14 @@ def test_rejeita_linha_e_parada_invalidas(cliente):
 def test_jornada_completa_com_embarque_validado(cliente, sonar, publicador):
     espera_id = criar_espera(cliente)["id"]
 
-    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Exemplo", "90001", 6)], None)
+    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Leste", "90001", 6)], None)
     assert not mensagens(publicador, "sonar/onibus/90001/alerta")
 
-    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Exemplo", "90001", 4)], None)
+    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Leste", "90001", 4)], None)
     alerta = mensagens(publicador, "sonar/onibus/90001/alerta")[0]
     assert alerta == {
         "espera_id": espera_id,
-        "parada_nome": "Ponto de demonstração (Itaquera)",
+        "parada_nome": "Avenida Itaquera, 1200",
         "paradas_ate": 2,
         "linha": "DEMO-10",
     }
@@ -103,7 +103,7 @@ def test_leitura_incerta_pede_confirmacao(cliente, sonar):
 
 def test_onibus_que_passou_direto_vira_ocorrencia_com_protocolo(cliente, sonar):
     espera_id = criar_espera(cliente)["id"]
-    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Exemplo", "90001", 3)], None)
+    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Leste", "90001", 3)], None)
     sonar.processar_deteccao("demo", {"linha_lida": "DEMO-10", "confianca": 0.9, "tempo_parado_s": 0.5})
     assert cliente.get(f"/esperas/{espera_id}").json()["ocorrencia"]["status"] == "aguardando_consentimento"
 

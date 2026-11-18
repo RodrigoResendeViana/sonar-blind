@@ -6,14 +6,14 @@ import App from './App'
 
 const PARADA = {
   id: 'demo',
-  nome: 'Ponto de demonstração (Itaquera)',
+  nome: 'Avenida Itaquera, 1200',
   codigo_sptrans: null,
   lat: -23.5424,
   lon: -46.4712,
   demo: true,
   linhas: [
-    { codigo: 'DEMO-10', destino: 'Terminal Exemplo' },
-    { codigo: 'DEMO-20', destino: 'Centro (exemplo)' },
+    { codigo: 'DEMO-10', destino: 'Terminal Leste' },
+    { codigo: 'DEMO-20', destino: 'Centro' },
   ],
 }
 
@@ -53,9 +53,9 @@ const PLANO = {
   trechos: [
     {
       linha: 'DEMO-20',
-      sentido: 'Centro (exemplo)',
+      sentido: 'Centro',
       embarque: { id: 'demo', nome: PARADA.nome, lat: -23.5424, lon: -46.4712 },
-      desembarque: { id: 'ex-centro', nome: 'Centro (exemplo)', lat: -23.545, lon: -46.498 },
+      desembarque: { id: 'ex-centro', nome: 'Centro', lat: -23.545, lon: -46.498 },
       paradas: 3,
       minutos: 9,
     },
@@ -102,7 +102,7 @@ function respostaPara(url: string, init?: RequestInit): unknown {
   if (url.includes('/ia/perguntar')) {
     return {
       status: 'ok',
-      resposta_falada: 'A linha DEMO-10 chega em 5 minutos no ponto de demonstração. Dados de demonstração.',
+      resposta_falada: 'A linha DEMO-10 chega em 5 minutos no ponto Avenida Itaquera, 1200. Dados de demonstração.',
       acao: { tipo: 'esperar', parada_id: 'demo', linhas: ['DEMO-10'] },
       fontes: ['demonstracao:previsao'],
       confianca: 0.9,

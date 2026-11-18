@@ -36,7 +36,7 @@ def test_demo_do_onibus_que_nao_para(cliente):
 
 def test_motorista_simulado_recebe_e_confirma(cliente, sonar):
     espera_id = criar_espera(cliente)["id"]
-    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Exemplo", "90001", 3)], None)
+    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Leste", "90001", 3)], None)
     alertas = ler_sse(cliente, "/simulador/motorista/eventos?uma_vez=true")
     assert alertas[0]["prefixo"] == "90001"
     assert alertas[0]["espera_id"] == espera_id

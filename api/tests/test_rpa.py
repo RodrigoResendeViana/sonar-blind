@@ -13,7 +13,7 @@ def _app_com_webhook(cfg, publicador):
 
 def _passou_direto(cliente, sonar) -> str:
     espera_id = criar_espera(cliente)["id"]
-    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Exemplo", "90001", 3)], None)
+    sonar.processar_previsao("demo", [Veiculo("DEMO-10", "Terminal Leste", "90001", 3)], None)
     sonar.processar_deteccao("demo", {"linha_lida": "DEMO-10", "confianca": 0.9, "tempo_parado_s": 0.5})
     return espera_id
 

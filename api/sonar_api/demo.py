@@ -12,8 +12,8 @@ from starlette.concurrency import run_in_threadpool
 from .olhovivo import Veiculo
 
 PARADA_DEMO = "demo"
-LINHA_CERTA, PREFIXO_CERTO, DESTINO_CERTO = "DEMO-10", "90001", "Terminal Exemplo"
-LINHA_ERRADA, PREFIXO_ERRADO, DESTINO_ERRADO = "DEMO-20", "90002", "Centro (exemplo)"
+LINHA_CERTA, PREFIXO_CERTO, DESTINO_CERTO = "DEMO-10", "90001", "Terminal Leste"
+LINHA_ERRADA, PREFIXO_ERRADO, DESTINO_ERRADO = "DEMO-20", "90002", "Centro"
 
 
 def previsao_exemplo(minutos_certa: int, minutos_errada: int) -> list[Veiculo]:

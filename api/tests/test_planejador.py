@@ -11,8 +11,8 @@ def test_termos_sem_acento_e_com_abreviacoes_da_sptrans():
 
 def test_lugar_por_apelido():
     rede = carregar_demo()
-    assert rede.procurar_lugar("pronto socorro")[0][0].nome == "Hospital Exemplo"
-    assert rede.procurar_lugar("a FIAP")[0][0].nome == "Universidade Exemplo"
+    assert rede.procurar_lugar("pronto socorro")[0][0].nome == "Hospital Municipal"
+    assert rede.procurar_lugar("a FIAP")[0][0].nome == "Campus Universitário"
     assert rede.procurar_lugar("aeroporto") == []
 
 
@@ -25,7 +25,7 @@ def _planos(rede, destino):
 def test_viagem_direta():
     plano = _planos(carregar_demo(), "terminal")[0]
     assert [t.linha for t in plano.trechos] == ["DEMO-10"]
-    assert plano.trechos[0].desembarque.nome == "Terminal Exemplo"
+    assert plano.trechos[0].desembarque.nome == "Terminal Leste"
     assert plano.trechos[0].paradas == 3
 
 
@@ -33,15 +33,15 @@ def test_viagem_com_baldeacao():
     plano = _planos(carregar_demo(), "hospital")[0]
     assert [t.linha for t in plano.trechos] == ["DEMO-20", "DEMO-30"]
     assert plano.trechos[0].desembarque.id == plano.trechos[1].embarque.id == "ex-centro"
-    fala = descrever(plano, "Hospital Exemplo")
-    assert "Pegue o DEMO-20" in fala and "Lá, pegue o DEMO-30" in fala and "no ponto Hospital Exemplo" in fala
+    fala = descrever(plano, "Hospital Municipal")
+    assert "Pegue o DEMO-20" in fala and "Lá, pegue o DEMO-30" in fala and "no ponto Hospital Municipal" in fala
 
 
 def test_nao_anda_na_contramao():
     rede = carregar_demo()
     origens = [(rede.pontos["ex-terminal"], 0.0)]
     plano = planejar(rede, origens, [(rede.pontos["ex-escola"], 0.0)])[0]
-    assert plano.trechos[0].destino == "Itaquera (exemplo)"  # a volta do DEMO-10, não a ida
+    assert plano.trechos[0].destino == "Itaquera"  # a volta do DEMO-10, não a ida
 
 
 def _gtfs(caminho):
