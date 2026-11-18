@@ -115,8 +115,8 @@ for u in ponto-demo camera-demo braco-demo bordo-90001; do
 done
 ```
 
-Elas vão no `firmware/include/secrets.h` (veja `firmware/README.md`) e nas variáveis do
-serviço da câmera (`edge/README.md`). Para mais dispositivos, acrescente em `usuarios_mqtt` no
+A do braço é colada no Serial Monitor do Wokwi (veja `firmware/README.md`) e a da câmera é pedida
+pelo `edge/iniciar.ps1` (veja `edge/README.md`). Para mais dispositivos, acrescente em `usuarios_mqtt` no
 `terraform.tfvars`, rode `terraform apply` e o deploy de novo.
 
 ## 8. Monitoramento

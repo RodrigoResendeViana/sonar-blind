@@ -12,7 +12,7 @@ Nenhuma imagem sai do notebook. O Sonar Ponto (ESP32) junta essa leitura com o u
 Sem o Sonar Ponto, a câmera decide sozinha (`--sem-ponto`, veja abaixo).
 
 Em paralelo, a cada quadro com letreiro, publica a posição dele em `sonar/parada/{id}/mira`
-(até ~7 vezes por segundo) para o **Sonar Braço** (Maker Lab) girar a câmera e seguir o ônibus:
+(até ~7 vezes por segundo) para o [**Sonar Braço**](../firmware/README.md) (Maker Lab) girar a câmera e seguir o ônibus:
 
 ```json
 {"alvo": true, "x": 0.42, "y": 0.5, "linha": "DEMO-10"}
@@ -46,7 +46,6 @@ cd edge
 .\iniciar.ps1                  # webcam + janela (pede a senha do MQTT camera-demo)
 .\iniciar.ps1 -Braco           # também mira sem espera aberta (demo do braço)
 .\iniciar.ps1 -Modo teclado    # sem câmera
-.\iniciar.ps1 -Braco -Camera "http://192.168.0.50:81/stream?t=TOKEN"   # vídeo da ESP32-CAM
 ```
 
 Na primeira vez, o script cria o `.venv` e instala tudo (alguns minutos). A senha do MQTT é pedida

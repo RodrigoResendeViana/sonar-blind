@@ -8,13 +8,15 @@ motorista saiba que ela está ali.
   Sonar planeja o caminho (até uma baldeação), avisa o ponto quando ela chega, diz "chegando agora:
   linha 8000-10. É o seu", avisa a hora de descer e, se o ônibus passar direto, registra a
   reclamação quando ela diz "quero reclamar".
-- **Sonar Ponto:** ESP32 com ultrassom, LED, buzzer e um botão no poste, mais uma câmera que lê o
-  letreiro. Apita para a pessoa achar o poste, pisca o LED para o motorista e registra cada
-  passagem. Sem app ou sem internet, o botão do poste avisa os motoristas do mesmo jeito.
-- **Sonar Braço:** cabeça pan-tilt (ESP32 + 2 servos) com a câmera (webcam ou ESP32-CAM sem fio)
-  que segue o letreiro do ônibus chegando.
-- **Sonar Bordo:** o bipper na cabine. Avisa o motorista duas paradas antes; ele confirma com um
-  toque e a pessoa ouve "o motorista confirmou".
+- **Sonar Ponto:** o poste do ponto, com a câmera que lê o letreiro. Apita para a pessoa achar o
+  poste, pisca uma luz para o motorista e registra cada passagem; sem app ou sem internet, um botão
+  no poste avisa os motoristas do mesmo jeito. Nesta versão, o poste é simulado no app e a câmera
+  é de verdade (celular ou webcam).
+- **Sonar Braço:** cabeça pan-tilt (ESP32 + 2 servos, no simulador Wokwi) que segue o letreiro do
+  ônibus chegando, guiada pela câmera e pela IA de visão. É a entrega de Maker Lab:
+  [`firmware/`](firmware/README.md).
+- **Sonar Bordo:** o bipper na cabine, simulado no app (tela do motorista). Avisa o motorista duas
+  paradas antes; ele confirma com um toque e a pessoa ouve "o motorista confirmou".
 - **Prova quando o ônibus não para:** com o "sim" do usuário, um robô registra a reclamação com
   as evidências do ponto e devolve o protocolo.
 
@@ -128,7 +130,7 @@ sonar/
 ├── ia/                     agente de GenAI: LLM local (Ollama) + ferramentas que consultam o Olho Vivo
 ├── rpa/                    RPA: fluxo do n8n que transforma ocorrências em reclamação com protocolo
 ├── visao/                  treino do YOLO do letreiro (dataset fora do Git)
-├── firmware/               Sonar Ponto, Sonar Bordo e Sonar Braço pan-tilt (PlatformIO + Wokwi)
+├── firmware/               Sonar Braço: ESP32 com 2 servos no Wokwi (Maker Lab)
 ├── infra/terraform/        bootstrap (bucket do state) e nuvem (VPC, EC2, IAM, OIDC, SSM, Budgets)
 ├── infra/compose/          docker-compose, Caddyfile, Mosquitto e o deploy.sh
 ├── infra/monitoramento/    Prometheus, alertas no Telegram e Grafana (rodam na EC2)

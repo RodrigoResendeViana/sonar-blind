@@ -169,8 +169,8 @@ os motoristas de todas as linhas.
 IA generativa responde perguntas livres e planeja viagens por ferramentas (`ia/`), ao lado da
 conversa por regras que conduz a viagem (`api/sonar_api/conversa.py`); Visão computacional lê o
 letreiro e acha onde ele está no quadro (`edge/`, `visao/`); Maker Lab segue o letreiro com o braço
-e avisa no ponto e na cabine (`firmware/`); RPA transforma o "não parou" em reclamação com
-protocolo (`rpa/`); Secure DevOps entrega e vigia tudo (`infra/`, `.github/`). Cada parte tem uma
+(ESP32 no Wokwi, `firmware/`), e o ponto e a cabine são simulados no app; RPA transforma o "não
+parou" em reclamação com protocolo (`rpa/`); Secure DevOps entrega e vigia tudo (`infra/`, `.github/`). Cada parte tem uma
 rede de segurança: sem LLM, a API responde por regras; sem modelo treinado, a câmera usa só OCR;
 sem webhook, o robô roda a cada 15 minutos; sem câmera, o Sonar Ponto decide pelo ultrassom e avisa
 "sem confirmação visual".
