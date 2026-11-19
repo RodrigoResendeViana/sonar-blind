@@ -38,8 +38,7 @@ def main() -> None:
     argumentos.add_argument(
         "--camera",
         default="0",
-        help="número da webcam (0, 1...) ou URL do vídeo: celular com DroidCam (http://<ip>:4747/video) "
-        "ou ESP32-CAM (http://<ip>:81/stream?t=<token>)",
+        help="número da webcam (0, 1...) ou URL do vídeo, como a do celular com DroidCam (http://<ip>:4747/video)",
     )
     argumentos.add_argument("--modelo", default="modelos/letreiro.pt")
     argumentos.add_argument(

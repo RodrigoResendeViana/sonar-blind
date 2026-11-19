@@ -3,7 +3,6 @@
 #   .\iniciar.ps1                         # webcam + janela, parada demo, linhas DEMO-10 e DEMO-20
 #   .\iniciar.ps1 -Braco                  # também publica a posição do letreiro sem espera (demo do braço)
 #   .\iniciar.ps1 -Modo teclado -Braco    # sem câmera: digite DEMO-10@0.2, DEMO-10@0.8...
-#   .\iniciar.ps1 -Camera "http://192.168.0.50:81/stream?t=SEU_TOKEN"   # ESP32-CAM na cabeça do braço
 #   .\iniciar.ps1 -SemPonto -Camera "http://192.168.0.20:4747/video"    # celular (DroidCam), sem o Sonar Ponto
 #
 # Na primeira vez, cria o ambiente (.venv) e instala tudo (alguns minutos: EasyOCR traz o PyTorch).

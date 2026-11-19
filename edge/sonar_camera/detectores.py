@@ -166,7 +166,7 @@ def escolher_localizador(tipo: str, modelo: str):
 
 
 def _sem_token(camera: int | str) -> str:
-    """URL da ESP32-CAM sem o token, para não ir parar no log."""
+    """URL do vídeo sem o token (?t=...), para não ir parar no log."""
     return re.sub(r"([?&]t=)[^&]+", r"\1***", str(camera))
 
 

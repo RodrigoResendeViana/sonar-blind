@@ -1,11 +1,11 @@
-// Sonar Braço no Wokwi pelo navegador (wokwi.com), sem instalar nada.
-// É a versão em um arquivo só de firmware/src/braco/main.cpp, para a cabeça pan-tilt simulada seguir
-// o letreiro que a câmera (ex.: o celular) vê de verdade. A visão roda no notebook (edge/); o ESP32
+// Sonar Braço no Wokwi pelo navegador (wokwi.com), sem instalar nada: a cabeça pan-tilt simulada
+// segue o letreiro que a câmera (ex.: o celular) vê de verdade. A visão roda no notebook (edge/); o ESP32
 // só recebe a posição do letreiro em sonar/parada/demo/mira ({"alvo":true,"x":0..1,"y":0..1}).
 //
 // Como usar:
 //   1. wokwi.com > New Project > ESP32. Cole este arquivo em sketch.ino e o diagram.json desta pasta
 //      em diagram.json. Crie a aba libraries.txt (botão "+" > New file) e cole o libraries.txt daqui.
+//      Passo a passo no README.md desta pasta.
 //   2. Play. No Serial Monitor, cole a senha do braco-demo e tecle Enter. Ela fica só na memória da
 //      simulação: projeto gratuito do Wokwi é público, então a senha NUNCA vai no código.
 //      A conexão leva uns 30 s: o TLS é lento no simulador (no ESP32 de verdade, ~1 s).
@@ -37,14 +37,14 @@ const int PINO_SERVO_PAN = 18;
 const int PINO_SERVO_TILT = 19;
 const int PINO_POT = 34;
 // A câmera fica parada (o celular), fora do braço simulado: o servo aponta direto para a posição do
-// letreiro no quadro (malha aberta). No braço de verdade, com a webcam na cabeça, é malha fechada.
+// letreiro no quadro (malha aberta).
 const float PAN_MIN = 20, PAN_MAX = 160, PAN_CENTRO = 90;
 const float TILT_MIN = 60, TILT_MAX = 120, TILT_CENTRO = 90;
 const float VELOCIDADE_MAX = 3.0f;        // graus por passo
 const float VELOCIDADE_VARREDURA = 1.0f;  // graus por passo, procurando
 const uint32_t PASSO_MS = 20, PERDEU_ALVO_MS = 3000, MANUAL_MS = 10000, STATUS_MS = 30000;
 
-// Raízes da Let's Encrypt (ISRG Root X1 e X2), as mesmas de firmware/include/certs.h. São públicas.
+// Raízes da Let's Encrypt (ISRG Root X1 e X2), que assinam o certificado do broker. São públicas.
 static const char CA_RAIZES[] = R"PEM(
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
