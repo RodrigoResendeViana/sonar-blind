@@ -36,8 +36,7 @@ Projeto da Global Solution 2026.2 (CitizenTech), 4º ano de Engenharia de Softwa
 |---|---|
 | App no ar | https://sonar.rodrigoviana.app.br |
 | API (OpenAPI) | https://sonar.rodrigoviana.app.br/api/docs |
-| Vídeo do Maker Lab | _preencher_ |
-| Vídeo de apresentação | _preencher_ |
+| Vídeo do MVP | [link](https://youtu.be/ANpH-VH-BQk) |
 
 ## Experimente
 
