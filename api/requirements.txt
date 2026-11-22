@@ -1,7 +1,7 @@
 fastapi==0.162.4
 uvicorn==0.54.0
 sqlalchemy==2.1.8
-psycopg[binary]==3.3.8
+psycopg[binary]==3.3.9
 httpx==0.28.1
 paho-mqtt==2.2.0
 prometheus-client==0.26.0
